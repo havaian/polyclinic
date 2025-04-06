@@ -8,8 +8,8 @@ const { redisClient } = require('../utils/redisClient');
 class MedicalAssistant {
     constructor() {
         this.openaiKey = process.env.OPENAI_API_KEY;
-        this.modelName = 'gpt-3.5-turbo';
-        this.cacheTTL = 3600; // 1 hour cache for responses
+        this.modelName = 'gpt-4.5-turbo';
+        this.cacheTTL = 0; // No cache for responses
     }
 
     /**
