@@ -18,7 +18,8 @@ USER nodeapp
 EXPOSE 3000
 
 # Set environment variables
-ENV NODE_ENV=production
+ENV NODE_ENV=development
+# ENV NODE_ENV=production
 
 # Command to run the application
-CMD ["node", "server.js"]
+CMD ["node", "index.js"]

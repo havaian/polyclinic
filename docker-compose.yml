@@ -69,14 +69,12 @@ services:
     container_name: polyclinic_backend
     restart: always
     depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      - mongodb
+      - redis
+      - rabbitmq
     environment:
-      - NODE_ENV=production
+      # - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=3000
       - MONGO_URI=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DATABASE}
       - REDIS_URI=redis://:${REDIS_PASSWORD}@redis:6379
@@ -105,29 +103,11 @@ services:
   #   container_name: polyclinic_frontend
   #   restart: always
   #   depends_on:
-  #     backend:
-  #       condition: service_healthy
+  #     - backend
   #   ports:
   #     - "80:80"
   #   environment:
   #     - VUE_APP_API_URL=http://localhost:3000/api
-  #   networks:
-  #     - polyclinic_net
-
-  # # Telegram Bot service
-  # telegram-bot:
-  #   build:
-  #     context: ./telegram-bot
-  #     dockerfile: Dockerfile
-  #   container_name: polyclinic_telegram_bot
-  #   restart: always
-  #   depends_on:
-  #     backend:
-  #       condition: service_healthy
-  #   environment:
-  #     - NODE_ENV=production
-  #     - API_URL=http://backend:3000/api
-  #     - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
   #   networks:
   #     - polyclinic_net
 

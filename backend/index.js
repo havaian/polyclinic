@@ -17,7 +17,7 @@ dotenv.config();
 // Import routes
 const userRoutes = require('./user/routes');
 const appointmentRoutes = require('./appointment/routes');
-const telegramRoutes = require('./telegram/routes');
+const telegramRoutes = require('./bot/routes');
 const assistantRoutes = require('./assistant/routes');
 
 // Initialize express app
@@ -103,14 +103,6 @@ app.use((err, req, res, next) => {
     res.status(statusCode).json({
         status,
         message: err.message || 'Internal server error'
-    });
-});
-
-// Handle 404 routes
-app.use('*', (req, res) => {
-    res.status(404).json({
-        status: 'fail',
-        message: `Cannot find ${req.originalUrl} on this server`
     });
 });
 

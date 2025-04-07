@@ -1,4 +1,4 @@
-const { MedicalAssistant } = require('./assistant');
+const { MedicalAssistant } = require('./index');
 
 /**
  * Chat with the medical assistant
