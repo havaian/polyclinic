@@ -52,14 +52,14 @@ if (bot) {
     bot.command("start", async (ctx) => {
         try {
             await ctx.reply(
-                "👋 Welcome to Doctor.uz bot!\n\n" +
+                "👋 Welcome to E-polyclinic.uz bot!\n\n" +
                 "I can help you manage your medical appointments and consultations.\n\n" +
                 "Here's what you can do:\n" +
-                "- Link your Doctor.uz account\n" +
+                "- Link your E-polyclinic.uz account\n" +
                 "- View your upcoming appointments\n" +
                 "- Get reminders for consultations\n" +
                 "- Chat with virtual medical assistant\n\n" +
-                "To begin, please use the /link command to connect your Doctor.uz account."
+                "To begin, please use the /link command to connect your E-polyclinic.uz account."
             );
         } catch (error) {
             console.error("Error in start command:", error);
@@ -72,12 +72,12 @@ if (bot) {
             await ctx.reply(
                 "🙋‍♂️ Available commands:\n\n" +
                 "/start - Start the bot\n" +
-                "/link - Link your Doctor.uz account\n" +
+                "/link - Link your E-polyclinic.uz account\n" +
                 "/appointments - View your appointments\n" +
                 "/profile - View your profile\n" +
                 "/unlink - Unlink your account\n" +
                 "/assistant - Chat with medical assistant\n\n" +
-                "If you need further assistance, contact support@doctor.uz"
+                "If you need further assistance, contact support@e-polyclinic.uz"
             );
         } catch (error) {
             console.error("Error in help command:", error);
@@ -92,8 +92,8 @@ if (bot) {
             ctx.session.userData = ctx.session.userData || {};
 
             await ctx.reply(
-                "To link your Doctor.uz account, I'll need your email address.\n\n" +
-                "Please enter the email you used to register on Doctor.uz:"
+                "To link your E-polyclinic.uz account, I'll need your email address.\n\n" +
+                "Please enter the email you used to register on E-polyclinic.uz:"
             );
         } catch (error) {
             console.error("Error in link command:", error);
@@ -150,7 +150,7 @@ if (bot) {
                     
                     // Specific error messages based on the error
                     if (error.response?.status === 404) {
-                        await ctx.reply("❌ Email not found. Please make sure your email is registered with Doctor.uz.");
+                        await ctx.reply("❌ Email not found. Please make sure your email is registered with E-polyclinic.uz.");
                     } else if (error.message.includes('API_URL environment variable')) {
                         await ctx.reply("❌ System configuration error. Please contact support.");
                         console.error(error.message);
@@ -182,7 +182,7 @@ if (bot) {
 
                     if (response.data.message === 'Telegram account linked successfully') {
                         await ctx.reply(
-                            "🎉 Your Doctor.uz account has been successfully linked!\n\n" +
+                            "🎉 Your E-polyclinic.uz account has been successfully linked!\n\n" +
                             "You'll now receive notifications about your appointments and consultations.\n\n" +
                             "Use /appointments to view your upcoming appointments or /help to see all available commands."
                         );
@@ -398,7 +398,7 @@ if (bot) {
 
             if (!ctx.session.userData.userId || !ctx.session.userData.token) {
                 await ctx.reply(
-                    "You need to link your Doctor.uz account first. Use /link to get started."
+                    "You need to link your E-polyclinic.uz account first. Use /link to get started."
                 );
                 return;
             }
@@ -483,7 +483,7 @@ if (bot) {
 
             if (!ctx.session.userData.userId || !ctx.session.userData.token) {
                 await ctx.reply(
-                    "You need to link your Doctor.uz account first. Use /link to get started."
+                    "You need to link your E-polyclinic.uz account first. Use /link to get started."
                 );
                 return;
             }
@@ -575,7 +575,7 @@ if (bot) {
 
             if (!user) {
                 await ctx.reply(
-                    "Your account is not linked. Use /link to connect your Doctor.uz account."
+                    "Your account is not linked. Use /link to connect your E-polyclinic.uz account."
                 );
                 return;
             }
@@ -583,7 +583,7 @@ if (bot) {
             ctx.session.step = 'unlink_confirm';
 
             await ctx.reply(
-                "⚠️ Are you sure you want to unlink your Doctor.uz account? You will no longer receive notifications.\n\n" +
+                "⚠️ Are you sure you want to unlink your E-polyclinic.uz account? You will no longer receive notifications.\n\n" +
                 "Please reply with 'Yes' to confirm or 'No' to cancel."
             );
         } catch (error) {
@@ -613,7 +613,7 @@ if (bot) {
             ctx.session.step = 'assistant_chat';
 
             await ctx.reply(
-                "👨‍⚕️ I'm the Doctor.uz virtual medical assistant. I can answer general medical questions and provide health information.\n\n" +
+                "👨‍⚕️ I'm the E-polyclinic.uz virtual medical assistant. I can answer general medical questions and provide health information.\n\n" +
                 "What would you like to know about? (Type /stop to end the chat)"
             );
         } catch (error) {
@@ -651,7 +651,7 @@ if (bot) {
 
             if (!ctx.session.userData || !ctx.session.userData.userId || !ctx.session.userData.token) {
                 await ctx.reply(
-                    "You need to link your Doctor.uz account first. Use /link to get started."
+                    "You need to link your E-polyclinic.uz account first. Use /link to get started."
                 );
                 return;
             }
@@ -787,7 +787,7 @@ if (bot) {
                 const user = await User.findOne({ telegramId: ctx.chat.id.toString() });
                 
                 if (!user) {
-                    await ctx.reply("Your account is not linked to Doctor.uz.");
+                    await ctx.reply("Your account is not linked to E-polyclinic.uz.");
                     ctx.session.step = 'idle';
                     return;
                 }
@@ -797,7 +797,7 @@ if (bot) {
                 await user.save();
                 
                 await ctx.reply(
-                    "✅ Your Doctor.uz account has been unlinked successfully.\n\n" +
+                    "✅ Your E-polyclinic.uz account has been unlinked successfully.\n\n" +
                     "You will no longer receive notifications through Telegram.\n\n" +
                     "You can link your account again at any time by using the /link command."
                 );
@@ -808,7 +808,7 @@ if (bot) {
                 );
             }
         } else if (answer === 'no' || answer === 'n') {
-            await ctx.reply("Account unlinking canceled. Your account remains linked to Doctor.uz.");
+            await ctx.reply("Account unlinking canceled. Your account remains linked to E-polyclinic.uz.");
         } else {
             await ctx.reply("Please answer with Yes or No.");
             return; // Keep in the same step

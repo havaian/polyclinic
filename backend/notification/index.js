@@ -71,7 +71,7 @@ class NotificationService {
             const { to, subject, text, html } = emailData;
 
             const mailOptions = {
-                from: `"Doctor.uz" <${process.env.SMTP_FROM_EMAIL}>`,
+                from: `"E-polyclinic.uz" <${process.env.SMTP_FROM_EMAIL}>`,
                 to,
                 subject,
                 text,
@@ -169,17 +169,17 @@ class NotificationService {
 
         const emailData = {
             to: email,
-            subject: 'Verify Your Email - Doctor.uz',
+            subject: 'Verify Your Email - E-polyclinic.uz',
             text: `Please verify your email by clicking on the following link: ${verificationLink}`,
             html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #4a90e2;">Doctor.uz Email Verification</h2>
-          <p>Thank you for registering with Doctor.uz! Please verify your email address by clicking the button below:</p>
+          <h2 style="color: #4a90e2;">E-polyclinic.uz Email Verification</h2>
+          <p>Thank you for registering with E-polyclinic.uz! Please verify your email address by clicking the button below:</p>
           <a href="${verificationLink}" style="display: inline-block; background-color: #4a90e2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 20px 0;">Verify Email</a>
           <p>If the button doesn't work, you can also copy and paste the following link into your browser:</p>
           <p>${verificationLink}</p>
           <p>This link will expire in 24 hours.</p>
-          <p>If you didn't create an account with Doctor.uz, please ignore this email.</p>
+          <p>If you didn't create an account with E-polyclinic.uz, please ignore this email.</p>
         </div>
       `
         };
@@ -198,11 +198,11 @@ class NotificationService {
 
         const emailData = {
             to: email,
-            subject: 'Reset Your Password - Doctor.uz',
+            subject: 'Reset Your Password - E-polyclinic.uz',
             text: `You requested a password reset. Please click the following link to reset your password: ${resetLink}`,
             html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #4a90e2;">Doctor.uz Password Reset</h2>
+          <h2 style="color: #4a90e2;">E-polyclinic.uz Password Reset</h2>
           <p>We received a request to reset your password. Click the button below to set a new password:</p>
           <a href="${resetLink}" style="display: inline-block; background-color: #4a90e2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 20px 0;">Reset Password</a>
           <p>If the button doesn't work, you can also copy and paste the following link into your browser:</p>
@@ -238,7 +238,7 @@ class NotificationService {
             // Email to patient
             const patientEmailData = {
                 to: patient.email,
-                subject: 'Appointment Confirmation - Doctor.uz',
+                subject: 'Appointment Confirmation - E-polyclinic.uz',
                 text: `Your appointment with Dr. ${doctor.firstName} ${doctor.lastName} has been confirmed for ${formattedDateTime}.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -249,7 +249,7 @@ class NotificationService {
               <p><strong>Consultation Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
               <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specialization})</p>
             </div>
-            <p>You can view your appointment details and join the consultation by logging into your Doctor.uz account.</p>
+            <p>You can view your appointment details and join the consultation by logging into your E-polyclinic.uz account.</p>
           </div>
         `
             };
@@ -257,7 +257,7 @@ class NotificationService {
             // Email to doctor
             const doctorEmailData = {
                 to: doctor.email,
-                subject: 'New Appointment - Doctor.uz',
+                subject: 'New Appointment - E-polyclinic.uz',
                 text: `You have a new appointment with ${patient.firstName} ${patient.lastName} scheduled for ${formattedDateTime}.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -268,7 +268,7 @@ class NotificationService {
               <p><strong>Consultation Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
               <p><strong>Patient:</strong> ${patient.firstName} ${patient.lastName}</p>
             </div>
-            <p>You can view appointment details and join the consultation by logging into your Doctor.uz account.</p>
+            <p>You can view appointment details and join the consultation by logging into your E-polyclinic.uz account.</p>
           </div>
         `
             };
@@ -325,7 +325,7 @@ class NotificationService {
             // Email to patient
             const patientEmailData = {
                 to: patient.email,
-                subject: 'Appointment Canceled - Doctor.uz',
+                subject: 'Appointment Canceled - E-polyclinic.uz',
                 text: `Your appointment with Dr. ${doctor.firstName} ${doctor.lastName} scheduled for ${formattedDateTime} has been canceled.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -336,7 +336,7 @@ class NotificationService {
               <p><strong>Consultation Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
               <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specialization})</p>
             </div>
-            <p>You can schedule a new appointment by logging into your Doctor.uz account.</p>
+            <p>You can schedule a new appointment by logging into your E-polyclinic.uz account.</p>
           </div>
         `
             };
@@ -344,7 +344,7 @@ class NotificationService {
             // Email to doctor
             const doctorEmailData = {
                 to: doctor.email,
-                subject: 'Appointment Canceled - Doctor.uz',
+                subject: 'Appointment Canceled - E-polyclinic.uz',
                 text: `Your appointment with ${patient.firstName} ${patient.lastName} scheduled for ${formattedDateTime} has been canceled.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -403,13 +403,13 @@ class NotificationService {
             // Email to patient for feedback
             const patientEmailData = {
                 to: patient.email,
-                subject: 'Appointment Completed - Doctor.uz',
+                subject: 'Appointment Completed - E-polyclinic.uz',
                 text: `Your appointment with Dr. ${doctor.firstName} ${doctor.lastName} has been completed. Please leave your feedback.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #4a90e2;">Appointment Completed</h2>
             <p>Your appointment with Dr. ${doctor.firstName} ${doctor.lastName} has been completed.</p>
-            <p>If any prescriptions were provided, you can view them in your Doctor.uz account.</p>
+            <p>If any prescriptions were provided, you can view them in your E-polyclinic.uz account.</p>
             <a href="${process.env.FRONTEND_URL}/appointments/feedback/${appointment._id}" style="display: inline-block; background-color: #4a90e2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 20px 0;">Leave Feedback</a>
             <p>Your feedback helps us improve our services.</p>
           </div>
@@ -462,7 +462,7 @@ class NotificationService {
             // Email to patient
             const patientEmailData = {
                 to: patient.email,
-                subject: 'New Prescriptions - Doctor.uz',
+                subject: 'New Prescriptions - E-polyclinic.uz',
                 text: `Dr. ${doctor.firstName} ${doctor.lastName} has added prescriptions to your recent appointment.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -471,7 +471,7 @@ class NotificationService {
             <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               ${prescriptionsHtml}
             </div>
-            <p>You can view these prescriptions anytime by logging into your Doctor.uz account.</p>
+            <p>You can view these prescriptions anytime by logging into your E-polyclinic.uz account.</p>
           </div>
         `
             };
@@ -483,7 +483,7 @@ class NotificationService {
             if (patient.telegramId) {
                 const telegramData = {
                     chatId: patient.telegramId,
-                    text: `💊 Dr. ${doctor.firstName} ${doctor.lastName} has added prescriptions to your recent appointment. Check your email or Doctor.uz account for details.`,
+                    text: `💊 Dr. ${doctor.firstName} ${doctor.lastName} has added prescriptions to your recent appointment. Check your email or E-polyclinic.uz account for details.`,
                     options: {
                         parse_mode: 'HTML'
                     }
@@ -516,7 +516,7 @@ class NotificationService {
             // Email to patient
             const patientEmailData = {
                 to: patient.email,
-                subject: 'Follow-up Appointment Scheduled - Doctor.uz',
+                subject: 'Follow-up Appointment Scheduled - E-polyclinic.uz',
                 text: `A follow-up appointment with Dr. ${doctor.firstName} ${doctor.lastName} has been scheduled for ${formattedDateTime}.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -527,7 +527,7 @@ class NotificationService {
               <p><strong>Consultation Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
               <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specialization})</p>
             </div>
-            <p>You can view your appointment details and join the consultation by logging into your Doctor.uz account.</p>
+            <p>You can view your appointment details and join the consultation by logging into your E-polyclinic.uz account.</p>
           </div>
         `
             };
@@ -535,7 +535,7 @@ class NotificationService {
             // Email to doctor
             const doctorEmailData = {
                 to: doctor.email,
-                subject: 'Follow-up Appointment Scheduled - Doctor.uz',
+                subject: 'Follow-up Appointment Scheduled - E-polyclinic.uz',
                 text: `A follow-up appointment with ${patient.firstName} ${patient.lastName} has been scheduled for ${formattedDateTime}.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -546,7 +546,7 @@ class NotificationService {
               <p><strong>Consultation Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
               <p><strong>Patient:</strong> ${patient.firstName} ${patient.lastName}</p>
             </div>
-            <p>You can view appointment details and join the consultation by logging into your Doctor.uz account.</p>
+            <p>You can view appointment details and join the consultation by logging into your E-polyclinic.uz account.</p>
           </div>
         `
             };
@@ -603,7 +603,7 @@ class NotificationService {
             // Email to patient
             const patientEmailData = {
                 to: patient.email,
-                subject: 'Appointment Reminder - Doctor.uz',
+                subject: 'Appointment Reminder - E-polyclinic.uz',
                 text: `Reminder: Your appointment with Dr. ${doctor.firstName} ${doctor.lastName} is scheduled for tomorrow at ${formattedDateTime}.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -614,7 +614,7 @@ class NotificationService {
               <p><strong>Consultation Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
               <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specialization})</p>
             </div>
-            <p>You can view your appointment details and join the consultation by logging into your Doctor.uz account.</p>
+            <p>You can view your appointment details and join the consultation by logging into your E-polyclinic.uz account.</p>
           </div>
         `
             };
@@ -622,7 +622,7 @@ class NotificationService {
             // Email to doctor
             const doctorEmailData = {
                 to: doctor.email,
-                subject: 'Appointment Reminder - Doctor.uz',
+                subject: 'Appointment Reminder - E-polyclinic.uz',
                 text: `Reminder: Your appointment with ${patient.firstName} ${patient.lastName} is scheduled for tomorrow at ${formattedDateTime}.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -633,7 +633,7 @@ class NotificationService {
               <p><strong>Consultation Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
               <p><strong>Patient:</strong> ${patient.firstName} ${patient.lastName}</p>
             </div>
-            <p>You can view appointment details and join the consultation by logging into your Doctor.uz account.</p>
+            <p>You can view appointment details and join the consultation by logging into your E-polyclinic.uz account.</p>
           </div>
         `
             };
@@ -688,7 +688,7 @@ class NotificationService {
             // Email to patient
             const patientEmailData = {
                 to: patient.email,
-                subject: 'Your Consultation Starts Soon - Doctor.uz',
+                subject: 'Your Consultation Starts Soon - E-polyclinic.uz',
                 text: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} starts in 15 minutes.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -703,7 +703,7 @@ class NotificationService {
             // Email to doctor
             const doctorEmailData = {
                 to: doctor.email,
-                subject: 'Consultation Starts Soon - Doctor.uz',
+                subject: 'Consultation Starts Soon - E-polyclinic.uz',
                 text: `Your consultation with ${patient.firstName} ${patient.lastName} starts in 15 minutes.`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

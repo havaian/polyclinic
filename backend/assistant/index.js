@@ -17,7 +17,7 @@ class MedicalAssistant {
      * @returns {String} System prompt
      */
     getSystemPrompt() {
-        return `You are an AI medical assistant for Doctor.uz, an online medical consultation platform in Uzbekistan.
+        return `You are an AI medical assistant for E-polyclinic.uz, an online medical consultation platform in Uzbekistan.
 Your role is to provide general health information, basic medical guidance, and answer common health-related questions.
 
 Important guidelines:
