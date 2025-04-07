@@ -50,7 +50,7 @@ router.post('/verification', async (req, res) => {
         await user.save();
 
         // Send email with verification code
-        const { NotificationService } = require('../services/notification');
+        const { NotificationService } = require('../notification');
         await NotificationService.sendEmail({
             to: email,
             subject: 'Telegram Verification Code - E-polyclinic.uz',
@@ -88,15 +88,6 @@ router.post('/verification', async (req, res) => {
  */
 router.post('/send', async (req, res) => {
     try {
-        const apiKey = req.headers['x-api-key'];
-
-        // Verify API key
-        if (!apiKey || apiKey !== process.env.TELEGRAM_API_KEY) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid API key'
-            });
-        }
 
         const { userId, message, parseMode } = req.body;
 

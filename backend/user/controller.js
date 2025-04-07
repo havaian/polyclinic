@@ -1,6 +1,6 @@
 const User = require('./model');
 const { validateUserInput } = require('../utils/validators');
-const { NotificationService } = require('../services/notification');
+const { NotificationService } = require('../notification');
 const crypto = require('crypto');
 
 // Register a new user (patient or doctor)

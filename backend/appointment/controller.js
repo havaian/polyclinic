@@ -1,7 +1,7 @@
 const Appointment = require('./model');
 const User = require('../user/model.js');
 const { validateAppointmentInput } = require('../utils/validators');
-const { NotificationService } = require('../services/notification');
+const { NotificationService } = require('../notification');
 
 // Create a new appointment
 exports.createAppointment = async (req, res) => {
