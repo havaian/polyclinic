@@ -1,14 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { handleUpdate, telegramBot } = require('./bot');
-const { verifyTelegramWebhook } = require('../auth');
+const { handleUpdate, telegramBot } = require('./index');
+const { verifyTelegramWebhook } = require('../auth/index');
 
 /**
  * @route POST /api/telegram/webhook/:secret
  * @desc Webhook endpoint for Telegram updates
  * @access Private (requires secret)
  */
-router.post('/webhook/:secret', verifyTelegramWebhook, handleUpdate);
+router.post('/webhook/:secret', verifyTelegramWebhook, (req, res) => {
+    handleUpdate(req, res);
+});
 
 /**
  * @route POST /api/telegram/verification
@@ -106,7 +108,7 @@ router.post('/send', async (req, res) => {
         }
 
         if (!telegramBot) {
-            return res.status(500).json({
+            return res.status(503).json({
                 success: false,
                 message: 'Telegram bot is not initialized'
             });
