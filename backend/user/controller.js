@@ -289,15 +289,9 @@ exports.resetPassword = async (req, res) => {
             return res.status(400).json({ message: 'Password must be at least 8 characters long' });
         }
 
-        // Hash the token to compare with stored hash
-        const hashedToken = crypto
-            .createHash('sha256')
-            .update(token)
-            .digest('hex');
-
         // Find user with the token and check if token is still valid
         const user = await User.findOne({
-            resetPasswordToken: hashedToken,
+            resetPasswordToken: token,
             resetPasswordExpire: { $gt: Date.now() }
         });
 

@@ -22,4 +22,4 @@ ENV NODE_ENV=development
 # ENV NODE_ENV=production
 
 # Command to run the application
-CMD ["node", "index.js"]
+CMD ["node", "--trace-warnings", "index.js"]
