@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
@@ -127,6 +128,8 @@ const userSchema = new Schema({
     telegramId: {
         type: String
     },
+    telegramVerificationCode: String,
+    telegramVerificationExpire: Date,
     resetPasswordToken: String,
     resetPasswordExpire: Date,
     verificationToken: String,
@@ -146,10 +149,7 @@ userSchema.virtual('fullName').get(function () {
     return `${this.firstName} ${this.lastName}`;
 });
 
-// Add index for email
-userSchema.index({ email: 1 });
-
-// Add indexes for searching doctors
+// Add indexes for searching doctors - removed the duplicate email index
 userSchema.index({ specialization: 1 });
 userSchema.index({ 'address.city': 1 });
 userSchema.index({ firstName: 'text', lastName: 'text', specialization: 'text' });
