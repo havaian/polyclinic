@@ -57,9 +57,8 @@ services:
       - redis
       - rabbitmq
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000
-      # Fixed MongoDB connection string to use the proper authentication database and target database
       - MONGO_URI=mongodb://mongodb:27017/${MONGO_DATABASE}
       - REDIS_URI=redis://:${REDIS_PASSWORD}@redis:6379
       - JWT_SECRET=${JWT_SECRET}
@@ -81,6 +80,42 @@ services:
       - backend_logs:/usr/src/app/logs
     networks:
       - polyclinic_net
+
+  # Frontend service (production)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: polyclinic_frontend
+    restart: always
+    depends_on:
+      - backend
+    # No direct port exposure since Nginx will proxy to it
+    # ports:
+    #   - "80:80"
+    volumes:
+      - frontend_logs:/var/log/nginx
+    networks:
+      - polyclinic_net
+
+  # # Main Nginx reverse proxy
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: nginx_proxy
+  #   restart: always
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+  #     - ./nginx/conf.d:/etc/nginx/conf.d
+  #     - ./nginx/ssl:/etc/nginx/ssl
+  #     - nginx_logs:/var/log/nginx
+  #   depends_on:
+  #     - backend
+  #     - frontend
+  #   networks:
+  #     - polyclinic_net
 
   # Monitoring with Prometheus
   prometheus:
@@ -130,9 +165,11 @@ volumes:
   redis_data:
   rabbitmq_data:
   backend_logs:
+  frontend_logs:
   prometheus_data:
   grafana_data:
   loki_data:
+  nginx_logs:
 
 networks:
   polyclinic_net:

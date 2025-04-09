@@ -1,4 +1,4 @@
-const Appointment = require('./model');
+const Appointment = require('./model.js');
 const User = require('../user/model.js');
 const { validateAppointmentInput } = require('../utils/validators');
 const { NotificationService } = require('../notification');

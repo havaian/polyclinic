@@ -16,10 +16,11 @@ const path = require('path');
 dotenv.config();
 
 // Import routes
-const userRoutes = require('./user/routes');
-const appointmentRoutes = require('./appointment/routes');
-const telegramRoutes = require('./bot/routes');
-const assistantRoutes = require('./assistant/routes');
+const userRoutes = require('./src/user/routes');
+const appointmentRoutes = require('./src/appointment/routes');
+const telegramRoutes = require('./src/bot/routes');
+const assistantRoutes = require('./src/assistant/routes');
+const paymentRoutes = require('./src/payment/routes');
 
 // Initialize express app
 const app = express();
@@ -51,6 +52,12 @@ if (process.env.NODE_ENV === 'development') {
     app.use(morgan('combined'));
 }
 
+// Stripe webhook needs raw body for signature verification
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+    const paymentController = require('./payment/controller');
+    paymentController.handleStripeWebhook(req, res);
+});
+
 // Body parser
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
@@ -61,41 +68,41 @@ app.use(cookieParser());
 // Custom sanitize middleware (instead of express-mongo-sanitize)
 app.use((req, res, next) => {
     if (!req.body) return next();
-    
+
     // Function to sanitize object
     const sanitize = (obj) => {
         const result = {};
-        
+
         Object.keys(obj).forEach(key => {
             // Check for MongoDB operators starting with $
             if (key[0] === '$') {
                 console.warn(`Potentially harmful key detected and sanitized: ${key}`);
                 result[`_${key.slice(1)}`] = obj[key];
-            } 
+            }
             // Handle nested objects and arrays
             else if (typeof obj[key] === 'object' && obj[key] !== null) {
                 if (Array.isArray(obj[key])) {
-                    result[key] = obj[key].map(item => 
+                    result[key] = obj[key].map(item =>
                         typeof item === 'object' && item !== null ? sanitize(item) : item
                     );
                 } else {
                     result[key] = sanitize(obj[key]);
                 }
-            } 
+            }
             // Regular properties
             else {
                 result[key] = obj[key];
             }
         });
-        
+
         return result;
     };
-    
+
     // Apply sanitization to body, query, and params
     if (req.body && typeof req.body === 'object') {
         req.body = sanitize(req.body);
     }
-    
+
     if (req.query && typeof req.query === 'object') {
         const sanitizedQuery = sanitize(req.query);
         // Safely copy sanitized properties
@@ -106,25 +113,25 @@ app.use((req, res, next) => {
             req.query[key] = sanitizedQuery[key];
         });
     }
-    
+
     if (req.params && typeof req.params === 'object') {
         const sanitizedParams = sanitize(req.params);
         // Safely copy sanitized properties
         Object.keys(req.params).forEach(key => {
-            delete req.params[key]; 
+            delete req.params[key];
         });
         Object.keys(sanitizedParams).forEach(key => {
             req.params[key] = sanitizedParams[key];
         });
     }
-    
+
     next();
 });
 
 // Custom XSS protection middleware (instead of xss-clean)
 app.use((req, res, next) => {
     if (!req.body) return next();
-    
+
     // Function to sanitize strings (basic HTML escape)
     const sanitizeXSS = (str) => {
         if (typeof str !== 'string') return str;
@@ -136,41 +143,41 @@ app.use((req, res, next) => {
             .replace(/'/g, '&#x27;')
             .replace(/\//g, '&#x2F;');
     };
-    
+
     // Function to sanitize object
     const sanitizeObj = (obj) => {
         const result = {};
-        
+
         Object.keys(obj).forEach(key => {
             // Handle nested objects and arrays
             if (typeof obj[key] === 'object' && obj[key] !== null) {
                 if (Array.isArray(obj[key])) {
-                    result[key] = obj[key].map(item => 
-                        typeof item === 'object' && item !== null ? sanitizeObj(item) : 
-                        typeof item === 'string' ? sanitizeXSS(item) : item
+                    result[key] = obj[key].map(item =>
+                        typeof item === 'object' && item !== null ? sanitizeObj(item) :
+                            typeof item === 'string' ? sanitizeXSS(item) : item
                     );
                 } else {
                     result[key] = sanitizeObj(obj[key]);
                 }
-            } 
+            }
             // Sanitize strings
             else if (typeof obj[key] === 'string') {
                 result[key] = sanitizeXSS(obj[key]);
-            } 
+            }
             // Keep other types as is
             else {
                 result[key] = obj[key];
             }
         });
-        
+
         return result;
     };
-    
+
     // Apply sanitization to body
     if (req.body && typeof req.body === 'object') {
         req.body = sanitizeObj(req.body);
     }
-    
+
     next();
 });
 
@@ -190,6 +197,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/assistant', assistantRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
