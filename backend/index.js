@@ -15,14 +15,17 @@ const path = require('path');
 // Load environment variables
 dotenv.config();
 
+const WebRTCService = require('./src/webrtc/service');
+
 // Import routes
 const userRoutes = require('./src/user/routes');
 const appointmentRoutes = require('./src/appointment/routes');
 const telegramRoutes = require('./src/bot/routes');
 const assistantRoutes = require('./src/assistant/routes');
 const paymentRoutes = require('./src/payment/routes');
-const WebRTCService = require('./src/webrtc/service');
 const { initializeConsultationRoutes } = require('./src/consultation/routes');
+const adminRoutes = require('./src/admin/routes');
+const specializationRoutes = require('./src/specialization/routes');
 
 // Initialize express app
 const app = express();
@@ -210,6 +213,8 @@ app.use('/api/telegram', telegramRoutes);
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/consultations', consultationRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/specializations', specializationRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

@@ -1112,6 +1112,95 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Specializations",
+      "item": [
+        {
+          "name": "Get All Active Specializations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/specializations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "specializations"
+              ]
+            },
+            "description": "Get all active medical specializations"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Specialization by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/specializations/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "specializations",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "specialization_id_here"
+                }
+              ]
+            },
+            "description": "Get a specific specialization by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Doctors by Specialization",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/specializations/:id/doctors?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "specializations",
+                ":id",
+                "doctors"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Results per page"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "specialization_id_here"
+                }
+              ]
+            },
+            "description": "Get doctors for a specific specialization"
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
