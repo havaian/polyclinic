@@ -21,6 +21,8 @@ const appointmentRoutes = require('./src/appointment/routes');
 const telegramRoutes = require('./src/bot/routes');
 const assistantRoutes = require('./src/assistant/routes');
 const paymentRoutes = require('./src/payment/routes');
+const WebRTCService = require('./src/webrtc/service');
+const { initializeConsultationRoutes } = require('./src/consultation/routes');
 
 // Initialize express app
 const app = express();
@@ -192,12 +194,22 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
+// Create HTTP server (needs to be before the app.listen call)
+const server = require('http').createServer(app);
+
+// Initialize WebRTC service
+const webRTCService = new WebRTCService(server);
+
+// Initialize and register consultation routes
+const consultationRoutes = initializeConsultationRoutes(webRTCService);
+
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/consultations', consultationRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -223,8 +235,9 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
+// Use server.listen instead of app.listen
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
 });
 
@@ -245,3 +258,10 @@ process.on('uncaughtException', err => {
     // Close server & exit process
     process.exit(1);
 });
+
+// Export WebRTC service for testing
+module.exports = {
+    app,
+    server,
+    webRTCService
+};
