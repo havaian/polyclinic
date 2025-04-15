@@ -1,7 +1,7 @@
 const User = require('../user/model');
 const Appointment = require('../appointment/model');
 const Payment = require('../payment/model');
-const Specialization = require('./models/specialization');
+const Specialization = require('../specialization/model');
 const mongoose = require('mongoose');
 const { redisClient } = require('../utils/redisClient');
 
