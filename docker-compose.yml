@@ -1,20 +1,20 @@
 version: '3.8'
 
+name: bisp-13292
+
 services:
   # MongoDB service
   mongodb:
     image: mongo:latest
     container_name: mongodb
     restart: always
-    environment:
-      - MONGO_INITDB_DATABASE=${MONGO_DATABASE}
     ports:
-      - "127.0.0.1:27017:27017"
+      - "${MONGODB_EXPOSE}:${MONGODB_PORT}"
     volumes:
       - mongodb_data:/data/db
     networks:
       - polyclinic_net
-    command: --auth
+    command: mongod --port ${MONGODB_PORT}
 
   # Redis service for caching
   redis:
@@ -22,10 +22,10 @@ services:
     container_name: redis
     restart: always
     ports:
-      - "127.0.0.1:6379:6379"
+      - "${REDIS_EXPOSE}:${REDIS_PORT}"
     volumes:
       - redis_data:/data
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    command: --port ${REDIS_PORT}
     networks:
       - polyclinic_net
 
@@ -35,13 +35,14 @@ services:
     container_name: rabbitmq
     restart: always
     ports:
-      - "127.0.0.1:5672:5672"
-      - "127.0.0.1:15672:15672"
+      - "${RABBITMQ_EXPOSE_1}:${RABBITMQ_PORT_1}"
+      - "${RABBITMQ_EXPOSE_2}:${RABBITMQ_PORT_2}"
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq/main.conf:/etc/rabbitmq/rabbitmq.conf
     networks:
       - polyclinic_net
 
@@ -56,47 +57,31 @@ services:
       - mongodb
       - redis
       - rabbitmq
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3000
-      - MONGO_URI=mongodb://mongodb:27017/${MONGO_DATABASE}
-      - REDIS_URI=redis://:${REDIS_PASSWORD}@redis:6379
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
-      - RABBITMQ_URI=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_SECURE=${SMTP_SECURE}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - FRONTEND_URL=${FRONTEND_URL}
-      - API_URL=http://backend:3000/api
+    env_file:
+      - ./.env
     ports:
-      - "127.0.0.1:3000:3000"
+      - "${BACKEND_EXPOSE}:${BACKEND_PORT}"
     volumes:
       - backend_logs:/usr/src/app/logs
     networks:
       - polyclinic_net
 
   # Frontend service (production)
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.prod
-    container_name: polyclinic_frontend
-    restart: always
-    depends_on:
-      - backend
-    # No direct port exposure since Nginx will proxy to it
-    # ports:
-    #   - "80:80"
-    volumes:
-      - frontend_logs:/var/log/nginx
-    networks:
-      - polyclinic_net
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.prod
+  #   container_name: polyclinic_frontend
+  #   restart: always
+  #   depends_on:
+  #     - backend
+  #   # No direct port exposure since Nginx will proxy to it
+  #   # ports:
+  #   #   - "${FRONTEND_EXPOSE}:${FRONTEND_PORT}"
+  #   volumes:
+  #     - frontend_logs:/var/log/nginx
+  #   networks:
+  #     - polyclinic_net
 
   # # Main Nginx reverse proxy
   # nginx:
@@ -104,8 +89,7 @@ services:
   #   container_name: nginx_proxy
   #   restart: always
   #   ports:
-  #     - "80:80"
-  #     - "443:443"
+  #     - "${NGINX_EXPOSE}:${NGINX_PORT}"
   #   volumes:
   #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf
   #     - ./nginx/conf.d:/etc/nginx/conf.d
@@ -123,7 +107,7 @@ services:
     container_name: prometheus
     restart: always
     ports:
-      - "127.0.0.1:9090:9090"
+      - "${PROMETHEUS_EXPOSE}:${PROMETHEUS_PORT}"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
@@ -136,7 +120,7 @@ services:
     container_name: grafana
     restart: always
     ports:
-      - "127.0.0.1:3001:3000"
+      - "${GRAFANA_EXPOSE}:${GRAFANA_PORT}"
     volumes:
       - grafana_data:/var/lib/grafana
     environment:
@@ -153,7 +137,7 @@ services:
     container_name: loki
     restart: always
     ports:
-      - "127.0.0.1:3100:3100"
+      - "${LOKI_EXPOSE}:${LOKI_PORT}"
     volumes:
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml

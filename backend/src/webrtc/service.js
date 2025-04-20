@@ -1,5 +1,5 @@
 const socket = require('socket.io');
-const { redisClient } = require('./utils/redisClient');
+const { redisClient } = require('../utils/redisClient');
 
 /**
  * WebRTC Service for handling real-time video consultations
