@@ -1,19 +1,20 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import store from '@/store'
 
-// Импорт представлений
-import HomeView from '@/views/HomeView.vue'
-import AuthView from '@/views/AuthView.vue'
-import ProfileView from '@/views/ProfileView.vue'
-import DoctorSearchView from '@/views/DoctorSearchView.vue'
-import AppointmentsView from '@/views/AppointmentsView.vue'
-import AppointmentDetailsView from '@/views/AppointmentDetailsView.vue'
-import ChatView from '@/views/ChatView.vue'
-import VideoChatView from '@/views/VideoChatView.vue'
-import DocumentsView from '@/views/DocumentsView.vue'
-import PaymentView from '@/views/PaymentView.vue'
-import AdminView from '@/views/AdminView.vue'
-import NotFoundView from '@/views/NotFoundView.vue'
+// Imports for views with lazy-loading
+const HomeView = () => import('@/views/HomeView.vue')
+const AuthView = () => import('@/views/AuthView.vue')
+const ProfileView = () => import('@/views/ProfileView.vue')
+const DoctorSearchView = () => import('@/views/DoctorSearchView.vue')
+const AppointmentsView = () => import('@/views/AppointmentsView.vue')
+const AppointmentDetailsView = () => import('@/views/AppointmentDetailsView.vue')
+const ChatView = () => import('@/views/ChatView.vue')
+const VideoChatView = () => import('@/views/VideoChatView.vue')
+const DocumentsView = () => import('@/views/DocumentsView.vue')
+const PaymentView = () => import('@/views/PaymentView.vue')
+const AdminView = () => import('@/views/AdminView.vue')
+const NotFoundView = () => import('@/views/NotFoundView.vue')
+const DoctorReviewsView = () => import('@/views/DoctorReviewsView.vue')
 
 const routes = [
   {
@@ -52,7 +53,10 @@ const routes = [
   {
     path: '/doctors/:id/reviews',
     name: 'DoctorReviews',
-    component: () => import('../views/DoctorReviewsView.vue')
+    component: DoctorReviewsView,
+    meta: {
+      title: 'Отзывы о враче'
+    }
   },
   {
     path: '/appointments',
@@ -142,12 +146,12 @@ const router = createRouter({
   routes
 })
 
-// Навигационный guard
+// Navigation guard
 router.beforeEach((to, from, next) => {
-  // Установка заголовка страницы
-  document.title = `${to.meta.title} | Медицинский портал`
-  
-  // Проверка аутентификации
+  // Set page title
+  document.title = `${to.meta.title} | BISP`
+
+  // Check authentication
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!store.getters['auth/isAuthenticated']) {
       next({
@@ -155,7 +159,7 @@ router.beforeEach((to, from, next) => {
         query: { redirect: to.fullPath }
       })
     } else {
-      // Проверка прав администратора
+      // Check admin rights
       if (to.matched.some(record => record.meta.requiresAdmin)) {
         if (!store.getters['auth/isAdmin']) {
           next({ path: '/' })
@@ -171,4 +175,4 @@ router.beforeEach((to, from, next) => {
   }
 })
 
-export default router 
+export default router

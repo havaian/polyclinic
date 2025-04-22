@@ -15,6 +15,12 @@ services:
     networks:
       - polyclinic_net
     command: mongod --port ${MONGODB_PORT}
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--port", "${MONGODB_PORT}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Redis service for caching
   redis:
@@ -28,6 +34,12 @@ services:
     command: --port ${REDIS_PORT}
     networks:
       - polyclinic_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "${REDIS_PORT}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   # RabbitMQ for message broker
   rabbitmq:
@@ -45,6 +57,12 @@ services:
       - ./rabbitmq/main.conf:/etc/rabbitmq/rabbitmq.conf
     networks:
       - polyclinic_net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   # Backend API service
   backend:
@@ -54,18 +72,21 @@ services:
     container_name: polyclinic_backend
     restart: always
     depends_on:
-      - mongodb
-      - redis
-      - rabbitmq
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       - NODE_ENV=development
       # - NODE_ENV=production
       - PORT=3000
       - MONGO_URI=mongodb://mongodb:27017/${MONGO_DATABASE}
-      - REDIS_URI=redis://:${REDIS_PASSWORD}@redis:6379
+      - REDIS_URI=redis://redis:${REDIS_PORT}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
-      - RABBITMQ_URI=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      - RABBITMQ_URI=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:${RABBITMQ_PORT_1}
       - FRONTEND_URL=http://frontend-dev:${FRONTEND_PORT}
       - API_URL=http://backend:${BACKEND_PORT}
     env_file:
@@ -76,6 +97,12 @@ services:
       - backend_logs:/usr/src/app/logs
     networks:
       - polyclinic_net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${BACKEND_PORT}/api/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # Frontend service (development)
   frontend-dev:
@@ -85,19 +112,26 @@ services:
     container_name: polyclinic_frontend_dev
     restart: always
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     env_file:
       - ./.env
     environment:
       - VUE_APP_API_URL=http://backend:${BACKEND_PORT}
       - VUE_APP_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
     ports:
-      - "${FRONTEND_DEV_EXPOSE}:${FRONTEND_DEV_PORT}"
+      - "${FRONTEND_EXPOSE}:${FRONTEND_DEV_PORT}"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     networks:
       - polyclinic_net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
 
   # # Frontend service (production)
   # frontend-prod:
@@ -107,16 +141,23 @@ services:
   #   container_name: polyclinic_frontend_prod
   #   restart: always
   #   depends_on:
-  #     - backend
+  #     backend:
+  #       condition: service_healthy
   #   env_file:
   #     - ./.env
   #   environment:
   #     - VUE_APP_API_URL=http://backend:${BACKEND_PORT}
   #     - VUE_APP_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
   #   ports:
-  #     - "${FRONTEND_PROD_EXPOSE}:${FRONTEND_PROD_PORT}"
+  #     - "${FRONTEND_EXPOSE}:${FRONTEND_PROD_PORT}"
   #   networks:
   #     - polyclinic_net
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 15s
 
   # # Main Nginx reverse proxy
   # nginx:
@@ -131,10 +172,18 @@ services:
   #     - ./nginx/ssl:/etc/nginx/ssl
   #     - nginx_logs:/var/log/nginx
   #   depends_on:
-  #     - backend
-  #     - frontend-prod
+  #     backend:
+  #       condition: service_healthy
+  #     frontend-prod:
+  #       condition: service_healthy
   #   networks:
   #     - polyclinic_net
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 10s
 
   # Monitoring with Prometheus
   prometheus:
@@ -148,6 +197,12 @@ services:
       - prometheus_data:/prometheus
     networks:
       - polyclinic_net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # Visualization with Grafana
   grafana:
@@ -164,7 +219,14 @@ services:
     networks:
       - polyclinic_net
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # Loki for log aggregation
   loki:
@@ -178,6 +240,12 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     networks:
       - polyclinic_net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
 volumes:
   mongodb_data:

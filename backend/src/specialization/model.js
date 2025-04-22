@@ -5,7 +5,7 @@ const specializationSchema = new Schema({
     name: {
         type: String,
         required: true,
-        unique: true,
+        unique: true,  // This creates an index automatically
         trim: true
     },
     description: {
@@ -32,8 +32,7 @@ const specializationSchema = new Schema({
     timestamps: true
 });
 
-// Index for faster searches
-specializationSchema.index({ name: 1 });
+// Only define the index for isActive field, since name already has an index via unique: true
 specializationSchema.index({ isActive: 1 });
 
 // Pre-save middleware to update timestamps

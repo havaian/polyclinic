@@ -1,3 +1,4 @@
+
 const nodemailer = require('nodemailer');
 const amqp = require('amqplib');
 const { telegramBot } = require('../bot');
@@ -24,24 +25,100 @@ class NotificationService {
     }
 
     /**
-     * Initialize RabbitMQ connection and channels
+     * Initialize RabbitMQ connection and channels with retry logic
      */
     async initializeRabbitMQ() {
-        try {
-            this.rabbitConnection = await amqp.connect(process.env.RABBITMQ_URI);
-            this.rabbitChannel = await this.rabbitConnection.createChannel();
+        const maxRetries = 5;
+        const retryInterval = 5000; // 5 seconds
+        let attempts = 0;
+        
+        const tryConnect = async () => {
+            try {
+                attempts++;
+                console.log(`Attempting to connect to RabbitMQ (Attempt ${attempts}/${maxRetries})...`);
+                
+                this.rabbitConnection = await amqp.connect(process.env.RABBITMQ_URI);
+                
+                // Set up event handlers for connection
+                this.rabbitConnection.on('error', (err) => {
+                    console.error('RabbitMQ connection error:', err);
+                    if (this.rabbitChannel) {
+                        try {
+                            this.rabbitChannel.close();
+                        } catch (closeError) {
+                            console.error('Error closing RabbitMQ channel:', closeError);
+                        }
+                    }
+                    setTimeout(() => this.initializeRabbitMQ(), retryInterval);
+                });
+                
+                this.rabbitConnection.on('close', () => {
+                    console.warn('RabbitMQ connection closed. Attempting to reconnect...');
+                    setTimeout(() => this.initializeRabbitMQ(), retryInterval);
+                });
+                
+                // Create channel
+                this.rabbitChannel = await this.rabbitConnection.createChannel();
+                
+                // Set up event handlers for channel
+                this.rabbitChannel.on('error', (err) => {
+                    console.error('RabbitMQ channel error:', err);
+                    setTimeout(() => this.createChannel(), retryInterval);
+                });
+                
+                this.rabbitChannel.on('close', () => {
+                    console.warn('RabbitMQ channel closed. Attempting to recreate...');
+                    setTimeout(() => this.createChannel(), retryInterval);
+                });
 
-            // Define notification queues
+                // Define notification queues
+                await this.rabbitChannel.assertQueue('email_notifications', { durable: true });
+                await this.rabbitChannel.assertQueue('sms_notifications', { durable: true });
+                await this.rabbitChannel.assertQueue('push_notifications', { durable: true });
+                await this.rabbitChannel.assertQueue('telegram_notifications', { durable: true });
+
+                console.log('RabbitMQ connection established for notifications');
+                return true;
+            } catch (error) {
+                console.error(`Failed to connect to RabbitMQ (Attempt ${attempts}/${maxRetries}):`, error.message);
+                
+                if (attempts >= maxRetries) {
+                    console.error('Maximum connection attempts reached. Will retry later.');
+                    setTimeout(() => this.initializeRabbitMQ(), retryInterval * 2);
+                    return false;
+                }
+                
+                console.log(`Retrying in ${retryInterval/1000} seconds...`);
+                await new Promise(resolve => setTimeout(resolve, retryInterval));
+                return tryConnect();
+            }
+        };
+        
+        return tryConnect();
+    }
+    
+    /**
+     * Create a RabbitMQ channel (used for reconnection)
+     */
+    async createChannel() {
+        try {
+            if (!this.rabbitConnection || this.rabbitConnection.closed) {
+                await this.initializeRabbitMQ();
+                return;
+            }
+            
+            this.rabbitChannel = await this.rabbitConnection.createChannel();
+            
+            // Re-assert queues on channel reconnection
             await this.rabbitChannel.assertQueue('email_notifications', { durable: true });
             await this.rabbitChannel.assertQueue('sms_notifications', { durable: true });
             await this.rabbitChannel.assertQueue('push_notifications', { durable: true });
             await this.rabbitChannel.assertQueue('telegram_notifications', { durable: true });
-
-            console.log('RabbitMQ connection established for notifications');
+            
+            console.log('RabbitMQ channel re-established');
         } catch (error) {
-            console.error('Failed to connect to RabbitMQ:', error);
-            // Retry connection after 5 seconds
-            setTimeout(() => this.initializeRabbitMQ(), 5000);
+            console.error('Error creating RabbitMQ channel:', error);
+            setTimeout(() => this.createChannel(), 5000);
         }
     }
 
@@ -52,14 +129,26 @@ class NotificationService {
     queueEmail(emailData) {
         if (!this.rabbitChannel) {
             console.error('RabbitMQ channel not available for email notifications');
+            // Fallback to direct send
+            this.sendEmail(emailData).catch(err => {
+                console.error('Error in fallback email send:', err);
+            });
             return;
         }
 
-        this.rabbitChannel.sendToQueue(
-            'email_notifications',
-            Buffer.from(JSON.stringify(emailData)),
-            { persistent: true }
-        );
+        try {
+            this.rabbitChannel.sendToQueue(
+                'email_notifications',
+                Buffer.from(JSON.stringify(emailData)),
+                { persistent: true }
+            );
+        } catch (error) {
+            console.error('Error queuing email:', error);
+            // Fallback to direct send
+            this.sendEmail(emailData).catch(err => {
+                console.error('Error in fallback email send:', err);
+            });
+        }
     }
 
     /**
@@ -97,11 +186,15 @@ class NotificationService {
             return;
         }
 
-        this.rabbitChannel.sendToQueue(
-            'sms_notifications',
-            Buffer.from(JSON.stringify(smsData)),
-            { persistent: true }
-        );
+        try {
+            this.rabbitChannel.sendToQueue(
+                'sms_notifications',
+                Buffer.from(JSON.stringify(smsData)),
+                { persistent: true }
+            );
+        } catch (error) {
+            console.error('Error queuing SMS:', error);
+        }
     }
 
     /**
@@ -114,11 +207,15 @@ class NotificationService {
             return;
         }
 
-        this.rabbitChannel.sendToQueue(
-            'push_notifications',
-            Buffer.from(JSON.stringify(pushData)),
-            { persistent: true }
-        );
+        try {
+            this.rabbitChannel.sendToQueue(
+                'push_notifications',
+                Buffer.from(JSON.stringify(pushData)),
+                { persistent: true }
+            );
+        } catch (error) {
+            console.error('Error queuing push notification:', error);
+        }
     }
 
     /**
@@ -128,14 +225,26 @@ class NotificationService {
     queueTelegramMessage(telegramData) {
         if (!this.rabbitChannel) {
             console.error('RabbitMQ channel not available for Telegram notifications');
+            // Fallback to direct send
+            this.sendTelegramMessage(telegramData.chatId, telegramData.text, telegramData.options).catch(err => {
+                console.error('Error in fallback Telegram send:', err);
+            });
             return;
         }
 
-        this.rabbitChannel.sendToQueue(
-            'telegram_notifications',
-            Buffer.from(JSON.stringify(telegramData)),
-            { persistent: true }
-        );
+        try {
+            this.rabbitChannel.sendToQueue(
+                'telegram_notifications',
+                Buffer.from(JSON.stringify(telegramData)),
+                { persistent: true }
+            );
+        } catch (error) {
+            console.error('Error queuing Telegram message:', error);
+            // Fallback to direct send
+            this.sendTelegramMessage(telegramData.chatId, telegramData.text, telegramData.options).catch(err => {
+                console.error('Error in fallback Telegram send:', err);
+            });
+        }
     }
 
     /**
