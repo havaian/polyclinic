@@ -57,6 +57,17 @@ services:
       - mongodb
       - redis
       - rabbitmq
+    environment:
+      - NODE_ENV=development
+      # - NODE_ENV=production
+      - PORT=3000
+      - MONGO_URI=mongodb://mongodb:27017/${MONGO_DATABASE}
+      - REDIS_URI=redis://:${REDIS_PASSWORD}@redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+      - RABBITMQ_URI=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      - FRONTEND_URL=http://frontend-dev:${FRONTEND_PORT}
+      - API_URL=http://backend:${BACKEND_PORT}
     env_file:
       - ./.env
     ports:
@@ -66,20 +77,44 @@ services:
     networks:
       - polyclinic_net
 
-  # Frontend service (production)
-  # frontend:
+  # Frontend service (development)
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: polyclinic_frontend_dev
+    restart: always
+    depends_on:
+      - backend
+    env_file:
+      - ./.env
+    environment:
+      - VUE_APP_API_URL=http://backend:${BACKEND_PORT}
+      - VUE_APP_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+    ports:
+      - "${FRONTEND_DEV_EXPOSE}:${FRONTEND_DEV_PORT}"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - polyclinic_net
+
+  # # Frontend service (production)
+  # frontend-prod:
   #   build:
   #     context: ./frontend
   #     dockerfile: Dockerfile.prod
-  #   container_name: polyclinic_frontend
+  #   container_name: polyclinic_frontend_prod
   #   restart: always
   #   depends_on:
   #     - backend
-  #   # No direct port exposure since Nginx will proxy to it
-  #   # ports:
-  #   #   - "${FRONTEND_EXPOSE}:${FRONTEND_PORT}"
-  #   volumes:
-  #     - frontend_logs:/var/log/nginx
+  #   env_file:
+  #     - ./.env
+  #   environment:
+  #     - VUE_APP_API_URL=http://backend:${BACKEND_PORT}
+  #     - VUE_APP_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+  #   ports:
+  #     - "${FRONTEND_PROD_EXPOSE}:${FRONTEND_PROD_PORT}"
   #   networks:
   #     - polyclinic_net
 
@@ -97,7 +132,7 @@ services:
   #     - nginx_logs:/var/log/nginx
   #   depends_on:
   #     - backend
-  #     - frontend
+  #     - frontend-prod
   #   networks:
   #     - polyclinic_net
 
