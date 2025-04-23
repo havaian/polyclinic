@@ -2,20 +2,18 @@ FROM node:20.18-alpine
 
 WORKDIR /app
 
-# Установка зависимостей для сборки
-RUN apk add --no-cache python3 make g++
-
-# Копирование файлов package.json и package-lock.json
+# Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Установка зависимостей
+# Install dependencies
 RUN npm install
 
-# Копирование исходного кода
-COPY . .
+# Set environment variables for hot reload
+ENV CHOKIDAR_USEPOLLING=true
+ENV WDS_SOCKET_PORT=8080
 
-# Открытие порта
-EXPOSE 3000
+# Expose port
+EXPOSE 8080
 
-# Запуск приложения в режиме разработки
-CMD ["npm", "run", "serve"] 
+# Start development server with hot reload
+CMD ["npm", "run", "serve", "--", "--public", "0.0.0.0"]
