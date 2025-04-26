@@ -114,12 +114,53 @@ class NotificationService {
             await this.rabbitChannel.assertQueue('sms_notifications', { durable: true });
             await this.rabbitChannel.assertQueue('push_notifications', { durable: true });
             await this.rabbitChannel.assertQueue('telegram_notifications', { durable: true });
-            
-            console.log('RabbitMQ channel re-established');
+
+            // Start consuming from the email queue
+            this.setupEmailConsumer();
+
+            console.log('RabbitMQ connection established for notifications');
         } catch (error) {
             console.error('Error creating RabbitMQ channel:', error);
             setTimeout(() => this.createChannel(), 5000);
         }
+    }
+
+    /**
+     * Set up consumer for email queue
+     */
+    setupEmailConsumer() {
+        if (!this.rabbitChannel) {
+            console.error('Cannot set up email consumer: RabbitMQ channel not available');
+            return;
+        }
+
+        this.rabbitChannel.prefetch(1); // Process one message at a time
+        
+        this.rabbitChannel.consume('email_notifications', async (msg) => {
+            if (!msg) return;
+            
+            try {
+                const emailData = JSON.parse(msg.content.toString());
+                console.log(`Processing email to: ${emailData.to}, subject: ${emailData.subject}`);
+                
+                // Send the email
+                await this.sendEmail(emailData);
+                
+                // Acknowledge message
+                this.rabbitChannel.ack(msg);
+            } catch (error) {
+                console.error('Error sending queued email:', error);
+                
+                // Only retry if it's not a permanent error
+                const isPermanentError = 
+                    error.message.includes('no recipients defined') || 
+                    error.message.includes('authentication failed');
+                
+                this.rabbitChannel.nack(msg, false, !isPermanentError);
+            }
+        });
+        
+        console.log('Email consumer initialized and listening for messages');
     }
 
     /**
@@ -142,11 +183,12 @@ class NotificationService {
                 Buffer.from(JSON.stringify(emailData)),
                 { persistent: true }
             );
+            console.log('Email successfully queued to RabbitMQ:', emailData.to);
         } catch (error) {
-            console.error('Error queuing email:', error);
-            // Fallback to direct send
+            console.error('Error queueing email to RabbitMQ:', error);
+            // Fall back to direct sending
             this.sendEmail(emailData).catch(err => {
-                console.error('Error in fallback email send:', err);
+                console.error('Error in fallback direct email sending:', err);
             });
         }
     }
@@ -159,6 +201,10 @@ class NotificationService {
         try {
             const { to, subject, text, html } = emailData;
 
+            console.log('Sending email:');
+            console.log('- To:', to);
+            console.log('- Subject:', subject);
+
             const mailOptions = {
                 from: `"E-polyclinic.uz" <${process.env.SMTP_FROM_EMAIL}>`,
                 to,
@@ -168,7 +214,7 @@ class NotificationService {
             };
 
             const info = await this.emailTransporter.sendMail(mailOptions);
-            console.log('Email sent:', info.messageId);
+            console.log('Email sent successfully:', info.messageId);
             return info;
         } catch (error) {
             console.error('Error sending email:', error);
@@ -295,6 +341,14 @@ class NotificationService {
 
         // Queue email to be sent asynchronously
         this.queueEmail(emailData);
+        
+        // Also try sending directly for important verification emails
+        try {
+            await this.sendEmail(emailData);
+            console.log('Verification email sent directly as backup');
+        } catch (directError) {
+            console.error('Direct verification email sending failed (queued version still processing):', directError.message);
+        }
     }
 
     /**
@@ -324,6 +378,14 @@ class NotificationService {
 
         // Queue email to be sent asynchronously
         this.queueEmail(emailData);
+        
+        // Also try sending directly for important reset emails
+        try {
+            await this.sendEmail(emailData);
+            console.log('Password reset email sent directly as backup');
+        } catch (directError) {
+            console.error('Direct password reset email sending failed (queued version still processing):', directError.message);
+        }
     }
 
     /**

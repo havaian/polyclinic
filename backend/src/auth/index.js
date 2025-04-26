@@ -40,6 +40,13 @@ exports.authenticateUser = async (req, res, next) => {
             });
         }
 
+        // ADD THIS CHECK - Verify that user has confirmed their email
+        if (!user.isVerified) {
+            return res.status(401).json({
+                message: 'Please verify your email before accessing this resource.'
+            });
+        }
+
         // Check if user is active
         if (!user.isActive) {
             return res.status(401).json({

@@ -30,7 +30,8 @@ exports.registerUser = async (req, res) => {
             lastName,
             phone,
             role: role || 'patient',
-            verificationToken
+            verificationToken,
+            isVerified: false
         });
 
         // Add role-specific fields
@@ -75,13 +76,16 @@ exports.registerUser = async (req, res) => {
         // Send verification email
         await NotificationService.sendVerificationEmail(user.email, verificationToken);
 
-        // Generate token (but inform user to verify email)
-        const token = user.generateAuthToken();
-
+        // Change: Don't generate JWT token here since the user needs to verify email first
         res.status(201).json({
-            message: 'User registered successfully. Please verify your email.',
-            token,
-            user: user.getPublicProfile()
+            success: true,
+            message: 'User registered successfully. Please verify your email before logging in.',
+            user: {
+                id: user._id,
+                email: user.email,
+                role: user.role,
+                isVerified: false
+            }
         });
     } catch (error) {
         console.error('Error registering user:', error);

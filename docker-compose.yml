@@ -104,41 +104,12 @@ services:
       retries: 3
       start_period: 30s
 
-  # Frontend service (development)
-  frontend-dev:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    container_name: polyclinic_frontend_dev
-    restart: always
-    depends_on:
-      backend:
-        condition: service_healthy
-    env_file:
-      - ./.env
-    environment:
-      - VUE_APP_API_URL=http://backend:${BACKEND_PORT}
-      - VUE_APP_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
-    ports:
-      - "${FRONTEND_EXPOSE}:${FRONTEND_DEV_PORT}"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    networks:
-      - polyclinic_net
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 40s
-
-  # # Frontend service (production)
-  # frontend-prod:
+  # # Frontend service (development)
+  # frontend-dev:
   #   build:
   #     context: ./frontend
-  #     dockerfile: Dockerfile.prod
-  #   container_name: polyclinic_frontend_prod
+  #     dockerfile: Dockerfile.dev
+  #   container_name: polyclinic_frontend_dev
   #   restart: always
   #   depends_on:
   #     backend:
@@ -149,41 +120,44 @@ services:
   #     - VUE_APP_API_URL=http://backend:${BACKEND_PORT}
   #     - VUE_APP_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
   #   ports:
-  #     - "${FRONTEND_EXPOSE}:${FRONTEND_PROD_PORT}"
+  #     - "${FRONTEND_EXPOSE}:3000"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
   #   networks:
   #     - polyclinic_net
   #   healthcheck:
-  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
   #     interval: 30s
   #     timeout: 5s
   #     retries: 3
-  #     start_period: 15s
+  #     start_period: 40s
 
-  # # Main Nginx reverse proxy
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: nginx_proxy
-  #   restart: always
-  #   ports:
-  #     - "${NGINX_EXPOSE}:${NGINX_PORT}"
-  #   volumes:
-  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-  #     - ./nginx/conf.d:/etc/nginx/conf.d
-  #     - ./nginx/ssl:/etc/nginx/ssl
-  #     - nginx_logs:/var/log/nginx
-  #   depends_on:
-  #     backend:
-  #       condition: service_healthy
-  #     frontend-prod:
-  #       condition: service_healthy
-  #   networks:
-  #     - polyclinic_net
-  #   healthcheck:
-  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 3
-  #     start_period: 10s
+  # Frontend service (production)
+  frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: polyclinic_frontend_prod
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    env_file:
+      - ./.env
+    environment:
+      - VUE_APP_API_URL=http://backend:${BACKEND_PORT}
+      - VUE_APP_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+    ports:
+      - "${FRONTEND_EXPOSE}:80"
+    networks:
+      - polyclinic_net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   # Monitoring with Prometheus
   prometheus:

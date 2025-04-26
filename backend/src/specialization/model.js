@@ -7,6 +7,7 @@ const specializationSchema = new Schema({
         required: true,
         unique: true,  // This creates an index automatically
         trim: true
+        // Removed index: true from here since we're declaring it below
     },
     description: {
         type: String,
