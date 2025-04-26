@@ -5,11 +5,11 @@ import axios from 'axios'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const token = ref(localStorage.getItem('token'))
-  
+
   const isAuthenticated = computed(() => !!token.value)
   const isDoctor = computed(() => user.value?.role === 'doctor')
   const isPatient = computed(() => user.value?.role === 'patient')
-  
+
   async function login(email, password) {
     try {
       const response = await axios.post('/api/users/login', { email, password })
@@ -21,7 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
       throw error.response?.data || error.message
     }
   }
-  
+
   async function register(userData) {
     try {
       const response = await axios.post('/api/users/register', userData)
@@ -30,13 +30,13 @@ export const useAuthStore = defineStore('auth', () => {
       throw error.response?.data || error.message
     }
   }
-  
+
   function logout() {
     user.value = null
     token.value = null
     localStorage.removeItem('token')
   }
-  
+
   return {
     user,
     token,

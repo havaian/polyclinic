@@ -6,23 +6,12 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label for="search" class="label">Search by name</label>
-            <input
-              id="search"
-              v-model="filters.name"
-              type="text"
-              class="input mt-1"
-              placeholder="Search doctors..."
-              @input="handleSearch"
-            />
+            <input id="search" v-model="filters.name" type="text" class="input mt-1" placeholder="Search doctors..."
+              @input="handleSearch" />
           </div>
           <div>
             <label for="specialization" class="label">Specialization</label>
-            <select
-              id="specialization"
-              v-model="filters.specialization"
-              class="input mt-1"
-              @change="handleSearch"
-            >
+            <select id="specialization" v-model="filters.specialization" class="input mt-1" @change="handleSearch">
               <option value="">All Specializations</option>
               <option v-for="spec in specializations" :key="spec" :value="spec">
                 {{ spec }}
@@ -31,12 +20,7 @@
           </div>
           <div>
             <label for="city" class="label">City</label>
-            <select
-              id="city"
-              v-model="filters.city"
-              class="input mt-1"
-              @change="handleSearch"
-            >
+            <select id="city" v-model="filters.city" class="input mt-1" @change="handleSearch">
               <option value="">All Cities</option>
               <option v-for="city in cities" :key="city" :value="city">
                 {{ city }}
@@ -49,7 +33,8 @@
       <!-- Doctor list -->
       <div class="space-y-4">
         <div v-if="loading" class="text-center py-8">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent"></div>
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent">
+          </div>
           <p class="mt-2 text-gray-600">Loading doctors...</p>
         </div>
 
@@ -59,18 +44,11 @@
           </div>
 
           <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div
-              v-for="doctor in doctors"
-              :key="doctor._id"
-              class="bg-white shadow rounded-lg overflow-hidden"
-            >
+            <div v-for="doctor in doctors" :key="doctor._id" class="bg-white shadow rounded-lg overflow-hidden">
               <div class="p-6">
                 <div class="flex items-center space-x-4">
-                  <img
-                    :src="doctor.profilePicture || 'https://via.placeholder.com/100'"
-                    :alt="doctor.firstName"
-                    class="h-16 w-16 rounded-full object-cover"
-                  />
+                  <img :src="doctor.profilePicture || 'https://via.placeholder.com/100'" :alt="doctor.firstName"
+                    class="h-16 w-16 rounded-full object-cover" />
                   <div>
                     <h3 class="text-lg font-medium text-gray-900">
                       Dr. {{ doctor.firstName }} {{ doctor.lastName }}
@@ -95,10 +73,8 @@
                 </div>
 
                 <div class="mt-6">
-                  <router-link
-                    :to="{ name: 'doctor-profile', params: { id: doctor._id }}"
-                    class="btn-primary w-full justify-center"
-                  >
+                  <router-link :to="{ name: 'doctor-profile', params: { id: doctor._id } }"
+                    class="btn-primary w-full justify-center">
                     View Profile
                   </router-link>
                 </div>
@@ -108,13 +84,8 @@
 
           <!-- Pagination -->
           <div v-if="totalPages > 1" class="flex justify-center space-x-2 mt-8">
-            <button
-              v-for="page in totalPages"
-              :key="page"
-              class="btn-secondary"
-              :class="{ 'bg-indigo-600 text-white': currentPage === page }"
-              @click="handlePageChange(page)"
-            >
+            <button v-for="page in totalPages" :key="page" class="btn-secondary"
+              :class="{ 'bg-indigo-600 text-white': currentPage === page }" @click="handlePageChange(page)">
               {{ page }}
             </button>
           </div>
