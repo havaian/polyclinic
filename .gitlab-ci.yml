@@ -1,0 +1,14 @@
+stages:
+  - deploy
+
+deploy:
+  stage: deploy
+  tags:
+    - shell
+  script:
+    - cd /home/root/projects/bisp-13292
+    - git pull origin main
+    - docker compose down
+    - docker compose up -d --build
+  only:
+    - main
