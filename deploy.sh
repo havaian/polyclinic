@@ -16,6 +16,28 @@ check_docker_compose() {
 
 DOCKER_COMPOSE=$(check_docker_compose)
 
+#!/bin/bash
+
+# Exit on error
+set -e
+
+echo "🚀 Starting E-Polyclinic deployment process..."
+
+# Function to check if docker compose command exists and use appropriate version
+check_docker_compose() {
+    if command -v docker-compose &> /dev/null; then
+        echo "docker-compose"
+    else
+        echo "docker compose"
+    fi
+}
+
+DOCKER_COMPOSE=$(check_docker_compose)
+
+# Pull latest changes
+echo "📥 Pulling latest changes from repository..."
+git pull origin main || { echo "❌ Git pull failed"; exit 1; }
+
 # Build new images without affecting running containers
 echo "🏗️  Building new images..."
 $DOCKER_COMPOSE build
@@ -32,17 +54,11 @@ sleep 15  # Wait for services to initialize
 # Check each service with improved health check logic
 check_service() {
     local service=$1
-    local status=$($DOCKER_COMPOSE ps -a --format "{{.Name}},{{.Status}}" | grep "$service")
+    # Use a simpler approach that works with both docker-compose and docker compose
+    local running=$($DOCKER_COMPOSE ps --services --filter "status=running" | grep -w "$service" || true)
     
-    if [[ -z "$status" ]]; then
-        echo "❌ $service is not found"
-        exit 1
-    fi
-    
-    if [[ $status == *"(healthy)"* ]]; then
-        echo "✅ $service is up and healthy"
-    elif [[ $status == *"Up"* ]]; then
-        echo "⚠️  $service is up but health status unknown"
+    if [[ -n "$running" ]]; then
+        echo "✅ $service is up and running"
     else
         echo "❌ $service failed to start properly"
         echo "Logs for $service:"
@@ -52,8 +68,8 @@ check_service() {
 }
 
 # Check E-Polyclinic services
-check_service "polyclinic_backend"
-check_service "polyclinic_frontend_dev"
+check_service "backend"
+check_service "frontend-prod"
 check_service "mongodb"
 check_service "redis"
 check_service "rabbitmq"
@@ -67,7 +83,7 @@ if curl -sf http://localhost:3333/api/health > /dev/null; then
     echo "✅ Backend API is responding"
 else
     echo "❌ Backend API is not responding"
-    $DOCKER_COMPOSE logs --tail=50 polyclinic_backend
+    $DOCKER_COMPOSE logs --tail=50 backend
     exit 1
 fi
 
