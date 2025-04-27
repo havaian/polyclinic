@@ -107,10 +107,12 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { format, parseISO, isWithinInterval, subMinutes, addMinutes } from 'date-fns'
 import axios from 'axios'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const appointments = ref([])
 const loading = ref(false)
@@ -142,7 +144,8 @@ async function fetchAppointments() {
             ...filters
         }
 
-        const response = await axios.get('/api/appointments/patient', { params })
+        // Use the patient's ID from the auth store
+        const response = await axios.get(`/api/appointments/patient/${authStore.user.id}`, { params })
         appointments.value = response.data.appointments
         totalPages.value = Math.ceil(response.data.pagination.total / response.data.pagination.limit)
     } catch (error) {

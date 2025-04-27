@@ -165,10 +165,10 @@ async function handleSubmit() {
         submitting.value = true
         error.value = ''
 
-        // Create appointment
+        // Create appointment (patientId will be automatically set from auth token in backend)
         const appointmentData = {
             doctorId: route.params.doctorId,
-            dateTime: `${formData.date}T${formData.time}`,
+            dateTime: formData.time,
             type: formData.type,
             reasonForVisit: formData.reasonForVisit
         }

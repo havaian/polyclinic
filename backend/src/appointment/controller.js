@@ -6,19 +6,32 @@ const { NotificationService } = require('../notification');
 // Create a new appointment
 exports.createAppointment = async (req, res) => {
     try {
-        const { error } = validateAppointmentInput(req.body);
+        // Get patient ID from authenticated user
+        const patientId = req.user.id;
+        
+        // Create a copy of the request body without patientId
+        // This ensures we don't pass any disallowed fields to the validator
+        const { doctorId, dateTime, type, reasonForVisit, notes } = req.body;
+        const appointmentData = {
+            doctorId,
+            dateTime,
+            type,
+            reasonForVisit,
+            notes
+        };
+        
+        const { error } = validateAppointmentInput(appointmentData);
         if (error) {
             return res.status(400).json({ message: error.details[0].message });
         }
 
-        const { patientId, doctorId, dateTime, type, reasonForVisit } = req.body;
-
-        // Verify that doctor and patient exist
+        // Verify that doctor exists
         const doctor = await User.findById(doctorId);
         if (!doctor || doctor.role !== 'doctor') {
             return res.status(404).json({ message: 'Doctor not found' });
         }
 
+        // Verify that patient exists (should always exist since they're authenticated)
         const patient = await User.findById(patientId);
         if (!patient || patient.role !== 'patient') {
             return res.status(404).json({ message: 'Patient not found' });
@@ -41,7 +54,7 @@ exports.createAppointment = async (req, res) => {
 
         // Create new appointment
         const appointment = new Appointment({
-            patient: patientId,
+            patient: patientId,  // Use ID from authenticated user
             doctor: doctorId,
             dateTime: appointmentDate,
             type,
@@ -64,6 +77,7 @@ exports.createAppointment = async (req, res) => {
     }
 };
 
+// Rest of the controller methods remain the same...
 // Get all appointments for a patient
 exports.getPatientAppointments = async (req, res) => {
     try {

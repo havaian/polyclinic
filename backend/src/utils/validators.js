@@ -151,12 +151,7 @@ exports.validateUserInput = (data) => {
  */
 exports.validateAppointmentInput = (data) => {
     const schema = Joi.object({
-        patientId: Joi.string().required()
-            .messages({
-                'string.empty': 'Patient ID is required',
-                'any.required': 'Patient ID is required'
-            }),
-
+        // Remove patientId from validation schema completely
         doctorId: Joi.string().required()
             .messages({
                 'string.empty': 'Doctor ID is required',
@@ -187,13 +182,7 @@ exports.validateAppointmentInput = (data) => {
         notes: Joi.string().trim().max(1000).optional()
             .messages({
                 'string.max': 'Notes cannot exceed 1000 characters'
-            }),
-
-        payment: Joi.object({
-            amount: Joi.number().positive().required(),
-            status: Joi.string().valid('pending', 'completed', 'refunded').default('pending'),
-            transactionId: Joi.string().optional()
-        }).optional()
+            })
     });
 
     return schema.validate(data, { abortEarly: false });

@@ -8,14 +8,16 @@ const { MedicalAssistant } = require('./index');
 exports.chatWithAssistant = async (req, res) => {
     try {
         const { message } = req.body;
+        // Use authenticated user ID if available, otherwise require it in request body
         const userId = req.user ? req.user.id : req.body.userId;
 
         if (!message) {
             return res.status(400).json({ message: 'Message is required' });
         }
 
+        // Only fallback to request body userId if user is not authenticated
         if (!userId) {
-            return res.status(400).json({ message: 'User ID is required' });
+            return res.status(400).json({ message: 'User authentication required' });
         }
 
         // Generate response from AI assistant
@@ -38,6 +40,7 @@ exports.chatWithAssistant = async (req, res) => {
  */
 exports.clearConversationHistory = async (req, res) => {
     try {
+        // Use authenticated user ID only
         const userId = req.user.id;
 
         // Clear conversation history
@@ -61,6 +64,7 @@ exports.clearConversationHistory = async (req, res) => {
 exports.getHealthInfo = async (req, res) => {
     try {
         const { topic } = req.params;
+        // Use authenticated user ID if available, otherwise use anonymous
         const userId = req.user ? req.user.id : 'anonymous';
 
         if (!topic) {
@@ -91,6 +95,7 @@ exports.getHealthInfo = async (req, res) => {
 exports.checkSymptoms = async (req, res) => {
     try {
         const { symptoms } = req.body;
+        // Use authenticated user ID if available, otherwise require it
         const userId = req.user ? req.user.id : req.body.userId;
 
         if (!symptoms || !Array.isArray(symptoms) || symptoms.length === 0) {
@@ -98,7 +103,7 @@ exports.checkSymptoms = async (req, res) => {
         }
 
         if (!userId) {
-            return res.status(400).json({ message: 'User ID is required' });
+            return res.status(400).json({ message: 'User authentication required' });
         }
 
         // Construct a message asking about the symptoms
