@@ -28,32 +28,30 @@ class NotificationService {
      * Initialize RabbitMQ connection and channels with retry logic
      */
     async initializeRabbitMQ() {
-        const maxRetries = 5;
-        const retryInterval = 5000; // 5 seconds
+        const maxRetries = 10;  // Increased retries
+        const retryInterval = 10000; // Increased to 10 seconds
         let attempts = 0;
         
         const tryConnect = async () => {
             try {
                 attempts++;
-                console.log(`Attempting to connect to RabbitMQ (Attempt ${attempts}/${maxRetries})...`);
+                console.log(`🔄 Attempting to connect to RabbitMQ (Attempt ${attempts}/${maxRetries})...`);
+                
+                // Wait for RabbitMQ to be fully ready
+                if (attempts > 1) {
+                    await new Promise(resolve => setTimeout(resolve, retryInterval));
+                }
                 
                 this.rabbitConnection = await amqp.connect(process.env.RABBITMQ_URI);
                 
                 // Set up event handlers for connection
                 this.rabbitConnection.on('error', (err) => {
-                    console.error('RabbitMQ connection error:', err);
-                    if (this.rabbitChannel) {
-                        try {
-                            this.rabbitChannel.close();
-                        } catch (closeError) {
-                            console.error('Error closing RabbitMQ channel:', closeError);
-                        }
-                    }
+                    console.error('⚠️ RabbitMQ connection error:', err);
                     setTimeout(() => this.initializeRabbitMQ(), retryInterval);
                 });
                 
                 this.rabbitConnection.on('close', () => {
-                    console.warn('RabbitMQ connection closed. Attempting to reconnect...');
+                    console.warn('⚠️ RabbitMQ connection closed. Attempting to reconnect...');
                     setTimeout(() => this.initializeRabbitMQ(), retryInterval);
                 });
                 
@@ -62,33 +60,32 @@ class NotificationService {
                 
                 // Set up event handlers for channel
                 this.rabbitChannel.on('error', (err) => {
-                    console.error('RabbitMQ channel error:', err);
+                    console.error('⚠️ RabbitMQ channel error:', err);
                     setTimeout(() => this.createChannel(), retryInterval);
                 });
                 
                 this.rabbitChannel.on('close', () => {
-                    console.warn('RabbitMQ channel closed. Attempting to recreate...');
+                    console.warn('⚠️ RabbitMQ channel closed. Attempting to recreate...');
                     setTimeout(() => this.createChannel(), retryInterval);
                 });
-
+    
                 // Define notification queues
                 await this.rabbitChannel.assertQueue('email_notifications', { durable: true });
                 await this.rabbitChannel.assertQueue('sms_notifications', { durable: true });
                 await this.rabbitChannel.assertQueue('push_notifications', { durable: true });
                 await this.rabbitChannel.assertQueue('telegram_notifications', { durable: true });
-
-                console.log('RabbitMQ connection established for notifications');
+    
+                console.log('✅ RabbitMQ connection established for notifications');
                 return true;
             } catch (error) {
-                console.error(`Failed to connect to RabbitMQ (Attempt ${attempts}/${maxRetries}):`, error.message);
+                console.error(`❌ Failed to connect to RabbitMQ (Attempt ${attempts}/${maxRetries}):`, error.message);
                 
                 if (attempts >= maxRetries) {
-                    console.error('Maximum connection attempts reached. Will retry later.');
-                    setTimeout(() => this.initializeRabbitMQ(), retryInterval * 2);
+                    console.error('⚠️ Maximum connection attempts reached. System will operate without message queuing.');
                     return false;
                 }
                 
-                console.log(`Retrying in ${retryInterval/1000} seconds...`);
+                console.log(`⏳ Retrying in ${retryInterval/1000} seconds...`);
                 await new Promise(resolve => setTimeout(resolve, retryInterval));
                 return tryConnect();
             }

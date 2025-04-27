@@ -9,9 +9,9 @@ const redisClient = createClient({
 const connectRedis = async () => {
     try {
         await redisClient.connect();
-        console.log('Connected to Redis');
+        console.log('✅ Connected to Redis');
     } catch (error) {
-        console.error('Redis connection error:', error);
+        console.error('❌ Redis connection error:', error);
         // Retry connection after 5 seconds
         setTimeout(connectRedis, 5000);
     }
@@ -19,17 +19,17 @@ const connectRedis = async () => {
 
 // Handle Redis errors
 redisClient.on('error', (error) => {
-    console.error('Redis error:', error);
+    console.error('❌ Redis error:', error);
 });
 
 // Handle Redis reconnections
 redisClient.on('reconnecting', () => {
-    console.log('Redis reconnecting...');
+    console.log('❌ Redis reconnecting...');
 });
 
 // Handle Redis ready
 redisClient.on('ready', () => {
-    console.log('Redis client ready');
+    console.log('✅ Redis client ready');
 });
 
 // Connect to Redis on startup
@@ -39,10 +39,10 @@ connectRedis();
 process.on('SIGINT', async () => {
     try {
         await redisClient.quit();
-        console.log('Redis client disconnected');
+        console.log('❌ Redis client disconnected');
         process.exit(0);
     } catch (error) {
-        console.error('Error closing Redis connection:', error);
+        console.error('❌ Error closing Redis connection:', error);
         process.exit(1);
     }
 });

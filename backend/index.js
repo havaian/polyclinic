@@ -9,11 +9,12 @@ const rateLimit = require('express-rate-limit');
 // const mongoSanitize = require('express-mongo-sanitize');
 // const xss = require('xss-clean');
 const cookieParser = require('cookie-parser');
-const dotenv = require('dotenv');
-const path = require('path');
 
 // Load environment variables
-dotenv.config();
+require('dotenv').config();
+
+// Connect to MongoDB
+require('./db');
 
 const WebRTCService = require('./src/webrtc/service');
 
@@ -29,14 +30,6 @@ const specializationRoutes = require('./src/specialization/routes');
 
 // Initialize express app
 const app = express();
-
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('Connected to MongoDB'))
-    .catch(err => {
-        console.error('MongoDB connection error:', err);
-        process.exit(1);
-    });
 
 // Middleware
 // Enable CORS
@@ -243,8 +236,11 @@ app.use((err, req, res, next) => {
 // Use server.listen instead of app.listen
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+    console.log(`✅ PORT ${PORT}`);
+    console.log(`✅ ${(process.env.NODE_ENV).toUpperCase()} mode`);
 });
+
+// require("./seed");
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', err => {

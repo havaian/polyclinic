@@ -836,22 +836,22 @@ if (bot) {
 
             bot.api.setWebhook(`${webhookDomain}${secretPath}`)
                 .then(() => {
-                    console.log(`Telegram bot webhook set up at ${webhookDomain}${secretPath}`);
+                    console.log(`✅ Telegram bot webhook set up at ${webhookDomain}${secretPath}`);
                 })
                 .catch(error => {
-                    console.error('Failed to set webhook:', error);
-                    console.log('Falling back to long polling');
+                    console.error('❌ Failed to set webhook:', error);
+                    console.log('❌ Falling back to long polling');
                     bot.start();
                 });
         } catch (error) {
-            console.error('Error configuring webhook:', error);
-            console.log('Falling back to long polling due to configuration error');
+            console.error('❌ Error configuring webhook:', error);
+            console.log('❌ Falling back to long polling due to configuration error');
             bot.start();
         }
     } else {
         // Use long polling in development
         bot.start();
-        console.log('Telegram bot started with long polling');
+        console.log('✅ Telegram bot started with long polling');
     }
 }
 

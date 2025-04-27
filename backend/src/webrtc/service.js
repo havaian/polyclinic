@@ -22,7 +22,7 @@ class WebRTCService {
         this.rooms = new Map();
         this.setupSocketHandlers();
 
-        console.log('WebRTC service initialized');
+        console.log('✅ WebRTC service initialized');
     }
 
     /**
@@ -30,7 +30,7 @@ class WebRTCService {
      */
     setupSocketHandlers() {
         this.io.on('connection', (socket) => {
-            console.log(`Socket connected: ${socket.id}`);
+            console.log(`✅ Socket connected: ${socket.id}`);
 
             // Store user information
             socket.on('register', async (data) => {
@@ -38,7 +38,7 @@ class WebRTCService {
                     const { userId, userType, appointmentId } = data;
 
                     if (!userId || !userType || !appointmentId) {
-                        socket.emit('error', { message: 'Missing required data' });
+                        socket.emit('error', { message: '❌ Missing required data' });
                         return;
                     }
 
@@ -66,7 +66,7 @@ class WebRTCService {
                     // Notify user of successful registration
                     socket.emit('registered', {
                         success: true,
-                        message: 'Successfully registered for consultation'
+                        message: '✅ Successfully registered for consultation'
                     });
 
                     // Notify room that new user joined
@@ -95,8 +95,8 @@ class WebRTCService {
                         participants
                     });
                 } catch (error) {
-                    console.error('Error during registration:', error);
-                    socket.emit('error', { message: 'Registration failed' });
+                    console.error('❌ Error during registration:', error);
+                    socket.emit('error', { message: '❌ Registration failed' });
                 }
             });
 
@@ -105,7 +105,7 @@ class WebRTCService {
                 const { appointmentId, signal, targetUserId } = data;
 
                 if (!appointmentId || !signal) {
-                    socket.emit('error', { message: 'Missing required data' });
+                    socket.emit('error', { message: '❌ Missing required data' });
                     return;
                 }
 
@@ -128,7 +128,7 @@ class WebRTCService {
                             userType: socket.userType
                         });
                     } else {
-                        socket.emit('error', { message: 'Target user not found' });
+                        socket.emit('error', { message: '❌ Target user not found' });
                     }
                 } else {
                     // Broadcast to all other users in room
@@ -145,7 +145,7 @@ class WebRTCService {
                 const { appointmentId, message } = data;
 
                 if (!appointmentId || !message) {
-                    socket.emit('error', { message: 'Missing required data' });
+                    socket.emit('error', { message: '❌ Missing required data' });
                     return;
                 }
 
@@ -163,7 +163,7 @@ class WebRTCService {
                 const { appointmentId, video, audio } = data;
 
                 if (!appointmentId || video === undefined || audio === undefined) {
-                    socket.emit('error', { message: 'Missing required data' });
+                    socket.emit('error', { message: '❌ Missing required data' });
                     return;
                 }
 
@@ -181,7 +181,7 @@ class WebRTCService {
                 const { appointmentId, sharing } = data;
 
                 if (!appointmentId || sharing === undefined) {
-                    socket.emit('error', { message: 'Missing required data' });
+                    socket.emit('error', { message: '❌ Missing required data' });
                     return;
                 }
 
@@ -198,13 +198,13 @@ class WebRTCService {
                 const { appointmentId, action } = data;
 
                 if (!appointmentId || !action) {
-                    socket.emit('error', { message: 'Missing required data' });
+                    socket.emit('error', { message: '❌ Missing required data' });
                     return;
                 }
 
                 // Only doctors can control consultation
                 if (socket.userType !== 'doctor') {
-                    socket.emit('error', { message: 'Unauthorized to control consultation' });
+                    socket.emit('error', { message: '❌ Unauthorized to control consultation' });
                     return;
                 }
 
@@ -220,13 +220,13 @@ class WebRTCService {
                 const { appointmentId, summary } = data;
 
                 if (!appointmentId) {
-                    socket.emit('error', { message: 'Missing required data' });
+                    socket.emit('error', { message: '❌ Missing required data' });
                     return;
                 }
 
                 // Only doctors can end consultation
                 if (socket.userType !== 'doctor') {
-                    socket.emit('error', { message: 'Unauthorized to end consultation' });
+                    socket.emit('error', { message: '❌ Unauthorized to end consultation' });
                     return;
                 }
 
@@ -245,12 +245,12 @@ class WebRTCService {
 
                     // Broadcast consultation end to room
                     this.io.to(appointmentId).emit('consultation-ended', {
-                        message: 'Consultation has ended',
+                        message: '❌ Consultation has ended',
                         timestamp: new Date().toISOString()
                     });
                 } catch (error) {
                     console.error('Error ending consultation:', error);
-                    socket.emit('error', { message: 'Failed to end consultation' });
+                    socket.emit('error', { message: '❌ Failed to end consultation' });
                 }
             });
 
@@ -277,12 +277,12 @@ class WebRTCService {
 
                     // Remove socket info from Redis
                     redisClient.del(`socket:${socket.id}`).catch(err => {
-                        console.error('Error removing socket from Redis:', err);
+                        console.error('❌ Error removing socket from Redis:', err);
                     });
 
-                    console.log(`Socket disconnected: ${socket.id}`);
+                    console.log(`❌ Socket disconnected: ${socket.id}`);
                 } catch (error) {
-                    console.error('Error handling disconnect:', error);
+                    console.error('❌ Error handling disconnect:', error);
                 }
             });
         });
@@ -317,7 +317,7 @@ class WebRTCService {
         if (this.rooms.has(appointmentId)) {
             // Notify all users in room
             this.io.to(appointmentId).emit('room-closed', {
-                message: 'This consultation has been closed by the system',
+                message: '❌ This consultation has been closed by the system',
                 timestamp: new Date().toISOString()
             });
 
