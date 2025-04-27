@@ -17,7 +17,7 @@ deploy:
       fi
     - cd $PROJECT_DIR
     - echo "✅ Pulling latest changes..."
-    # Use CI_JOB_TOKEN for authentication - update with your GitLab instance URL
+    # Use CI_JOB_TOKEN for authentication
     - git remote set-url origin https://gitlab-ci-token:${CI_JOB_TOKEN}@${GITLAB_REMOTE_URL}
     - git pull origin main || { echo "❌ Git pull failed"; exit 1; }
     - echo "✅ Stopping existing containers..."
