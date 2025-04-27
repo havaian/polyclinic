@@ -20,11 +20,10 @@ deploy:
     # Use CI_JOB_TOKEN for authentication
     - git remote set-url origin https://gitlab-ci-token:${CI_JOB_TOKEN}@${GITLAB_REMOTE_URL}
     - git pull origin main || { echo "❌ Git pull failed"; exit 1; }
-    - echo "✅ Stopping existing containers..."
-    - docker compose down || { echo "❌ Docker compose down failed"; exit 1; }
-    - echo "✅ Starting new containers..."
-    - docker compose up -d --build || { echo "❌ Docker compose up failed"; exit 1; }
-    - echo "✅ Deployment completed successfully"
+    - echo "✅ Executing deployment script..."
+    # Run the deploy script
+    - chmod +x deploy.sh
+    - ./deploy.sh
   after_script:
     # Reset remote URL to prevent token exposure
     - cd $PROJECT_DIR && git remote set-url origin https://${GITLAB_REMOTE_URL}
