@@ -43,6 +43,33 @@ const router = createRouter({
         requiresGuest: true
       }
     },
+    // Profile routes
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('@/views/profile/PatientProfile.vue'),
+      meta: {
+        requiresAuth: true,
+        requiresPatient: true
+      }
+    },
+    {
+      path: '/doctor-profile',
+      name: 'doctor-profile',
+      component: () => import('@/views/profile/DoctorProfile.vue'),
+      meta: {
+        requiresAuth: true,
+        requiresDoctor: true
+      }
+    },
+    {
+      path: '/profile/edit',
+      name: 'profile-edit',
+      component: () => import('@/views/profile/EditProfile.vue'),
+      meta: {
+        requiresAuth: true
+      }
+    },
     // Doctor routes
     {
       path: '/doctors',
@@ -51,7 +78,7 @@ const router = createRouter({
     },
     {
       path: '/doctors/:id',
-      name: 'doctor-profile',
+      name: 'doctor-profile-view',
       component: () => import('@/views/doctors/DoctorProfile.vue')
     },
     // Appointment routes
@@ -103,15 +130,6 @@ const router = createRouter({
       path: '/payment/cancel',
       name: 'payment-cancel',
       component: () => import('@/views/payments/PaymentCancel.vue'),
-      meta: {
-        requiresAuth: true
-      }
-    },
-    // Profile routes
-    {
-      path: '/profile',
-      name: 'profile',
-      component: () => import('@/views/profile/EditProfile.vue'),
       meta: {
         requiresAuth: true
       }

@@ -90,13 +90,16 @@
                     </template>
 
                     <div class="flex justify-end space-x-4">
-                        <router-link :to="{ name: authStore.isDoctor ? 'doctor-profile' : 'patient-profile' }"
-                            class="btn-secondary">
+                        <router-link :to="authStore.isDoctor ? '/doctor-profile' : '/profile'" class="btn-secondary">
                             Cancel
                         </router-link>
                         <button type="submit" class="btn-primary" :disabled="loading">
                             {{ loading ? 'Saving...' : 'Save Changes' }}
                         </button>
+                    </div>
+
+                    <div v-if="error" class="text-sm text-center text-red-600">
+                        {{ error }}
                     </div>
                 </form>
             </div>
@@ -113,6 +116,7 @@ import axios from 'axios'
 const router = useRouter()
 const authStore = useAuthStore()
 const loading = ref(false)
+const error = ref('')
 
 const formData = reactive({
     firstName: '',
@@ -158,6 +162,7 @@ async function fetchUserProfile() {
 async function handleSubmit() {
     try {
         loading.value = true
+        error.value = ''
 
         const updateData = {
             firstName: formData.firstName,
@@ -178,9 +183,10 @@ async function handleSubmit() {
         }
 
         await axios.patch('/api/users/me', updateData)
-        router.push({ name: authStore.isDoctor ? 'doctor-profile' : 'patient-profile' })
+        router.push(authStore.isDoctor ? '/doctor-profile' : '/profile')
     } catch (error) {
         console.error('Error updating profile:', error)
+        error.value = error.response?.data?.message || 'Failed to update profile'
     } finally {
         loading.value = false
     }

@@ -3,7 +3,8 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(null)
+  // Initialize state from localStorage
+  const user = ref(JSON.parse(localStorage.getItem('user')) || null)
   const token = ref(localStorage.getItem('token'))
 
   const isAuthenticated = computed(() => !!token.value)
@@ -15,7 +16,11 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await axios.post('/api/users/login', { email, password })
       token.value = response.data.token
       user.value = response.data.user
+
+      // Persist to localStorage
       localStorage.setItem('token', token.value)
+      localStorage.setItem('user', JSON.stringify(user.value))
+
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
@@ -35,6 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     token.value = null
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
   }
 
   return {

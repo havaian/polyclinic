@@ -81,7 +81,7 @@ exports.createAppointment = async (req, res) => {
 // Get all appointments for a patient
 exports.getPatientAppointments = async (req, res) => {
     try {
-        const { patientId } = req.params;
+        const { patientId } = req.params || req.user.id;
         const { status, limit = 10, skip = 0 } = req.query;
 
         const query = { patient: patientId };
