@@ -19,6 +19,10 @@
   body {
     @apply text-gray-900;
   }
+
+  .min-h-screen {
+    min-height: 78vh !important;
+  }
 }
 
 @layer components {
