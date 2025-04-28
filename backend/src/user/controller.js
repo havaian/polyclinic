@@ -285,6 +285,11 @@ exports.resetPassword = async (req, res) => {
         const { token } = req.params;
         const { password } = req.body;
 
+        const resetPasswordToken = crypto
+                .createHash('sha256')
+                .update(token)
+                .digest('hex');
+
         if (!password) {
             return res.status(400).json({ message: 'Please provide a new password' });
         }
@@ -295,7 +300,7 @@ exports.resetPassword = async (req, res) => {
 
         // Find user with the token and check if token is still valid
         const user = await User.findOne({
-            resetPasswordToken: token,
+            resetPasswordToken: resetPasswordToken,
             resetPasswordExpire: { $gt: Date.now() }
         });
 
