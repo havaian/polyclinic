@@ -4,7 +4,31 @@
             <div>
                 <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Create your account</h2>
             </div>
-            <form class="mt-8 space-y-6" @submit.prevent="handleSubmit">
+
+            <div v-if="registrationSuccess" class="rounded-md bg-green-50 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-green-800">Registration successful!</h3>
+                        <div class="mt-2 text-sm text-green-700">
+                            <p>Please check your email to verify your account before logging in.</p>
+                        </div>
+                        <div class="mt-4">
+                            <router-link to="/login" class="text-sm font-medium text-green-600 hover:text-green-500">
+                                Go to login page →
+                            </router-link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <form v-else class="mt-8 space-y-6" @submit.prevent="handleSubmit">
                 <div class="rounded-md shadow-sm space-y-4">
                     <div>
                         <label for="role" class="label">I am a</label>
@@ -42,28 +66,30 @@
                         <input id="password" v-model="formData.password" type="password" required class="input mt-1" />
                     </div>
 
-                    <template v-if="formData.role === 'patient'">
-                        <div>
-                            <label for="dateOfBirth" class="label">Date of Birth</label>
-                            <input id="dateOfBirth" v-model="formData.dateOfBirth" type="date" required
-                                class="input mt-1" />
-                        </div>
+                    <!-- Date of Birth - For both patient and doctor -->
+                    <div>
+                        <label for="dateOfBirth" class="label">Date of Birth</label>
+                        <input id="dateOfBirth" v-model="formData.dateOfBirth" type="date" required class="input mt-1"
+                            :max="maxDate" />
+                    </div>
 
-                        <div>
-                            <label for="gender" class="label">Gender</label>
-                            <select id="gender" v-model="formData.gender" class="input mt-1" required>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                                <option value="other">Other</option>
-                                <option value="prefer not to say">Prefer not to say</option>
-                            </select>
-                        </div>
-                    </template>
+                    <!-- Gender - For both patient and doctor -->
+                    <div>
+                        <label for="gender" class="label">Gender</label>
+                        <select id="gender" v-model="formData.gender" class="input mt-1" required>
+                            <option value="">Select gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                            <option value="prefer not to say">Prefer not to say</option>
+                        </select>
+                    </div>
 
                     <template v-if="formData.role === 'doctor'">
                         <div>
                             <label for="specialization" class="label">Specialization</label>
                             <select id="specialization" v-model="formData.specialization" class="input mt-1" required>
+                                <option value="">Select specialization</option>
                                 <option v-for="spec in specializations" :key="spec" :value="spec">
                                     {{ spec }}
                                 </option>
@@ -112,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -149,27 +175,24 @@ const formData = reactive({
     consultationFee: 0
 })
 
+const registrationSuccess = ref(false)
 const loading = ref(false)
 const error = ref('')
+
+// Calculate max date (18 years ago from today)
+const maxDate = computed(() => {
+    const date = new Date()
+    date.setFullYear(date.getFullYear() - 18)
+    return date.toISOString().split('T')[0]
+})
 
 async function handleSubmit() {
     try {
         loading.value = true
         error.value = ''
 
-        const userData = { ...formData }
-        if (userData.role === 'doctor') {
-            delete userData.dateOfBirth
-            delete userData.gender
-        } else {
-            delete userData.specialization
-            delete userData.licenseNumber
-            delete userData.experience
-            delete userData.consultationFee
-        }
-
-        await authStore.register(userData)
-        router.push('/login')
+        await authStore.register(formData)
+        registrationSuccess.value = true
     } catch (err) {
         error.value = err.message || 'Failed to create account'
     } finally {

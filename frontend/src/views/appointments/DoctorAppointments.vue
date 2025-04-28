@@ -161,7 +161,7 @@ async function fetchAppointments() {
         }
 
         // Use the doctor's ID from the auth store
-        const response = await axios.get(`/api/appointments/doctor/${authStore.user.id}`, { params })
+        const response = await axios.get(`/api/appointments/doctor/${authStore.user._id}`, { params })
         appointments.value = response.data.appointments
         totalPages.value = Math.ceil(response.data.pagination.total / response.data.pagination.limit)
     } catch (error) {

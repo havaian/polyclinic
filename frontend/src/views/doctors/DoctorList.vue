@@ -73,7 +73,7 @@
                 </div>
 
                 <div class="mt-6">
-                  <router-link :to="{ name: 'doctor-profile', params: { id: doctor._id } }"
+                  <router-link :to="{ name: 'doctor-profile-view', params: { id: doctor._id } }"
                     class="btn-primary w-full justify-center">
                     View Profile
                   </router-link>

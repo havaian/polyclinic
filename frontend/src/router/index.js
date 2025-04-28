@@ -28,6 +28,14 @@ const router = createRouter({
       }
     },
     {
+      path: '/verify-email/:token',
+      name: 'verify-email',
+      component: () => import('@/views/auth/VerifyEmail.vue'),
+      meta: {
+        requiresGuest: true
+      }
+    },
+    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/views/auth/ForgotPassword.vue'),
