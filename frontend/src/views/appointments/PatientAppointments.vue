@@ -38,7 +38,7 @@
                         <div class="p-6">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center space-x-4">
-                                    <img :src="appointment.doctor.profilePicture || 'https://via.placeholder.com/100'"
+                                    <img :src="appointment.doctor.profilePicture || '/images/user-placeholder.jpg'"
                                         :alt="appointment.doctor.firstName"
                                         class="h-12 w-12 rounded-full object-cover" />
                                     <div>

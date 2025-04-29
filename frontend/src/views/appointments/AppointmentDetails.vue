@@ -31,7 +31,7 @@
                         <div>
                             <h3 class="text-lg font-medium text-gray-900 mb-4">Doctor</h3>
                             <div class="flex items-center space-x-4">
-                                <img :src="appointment.doctor.profilePicture || 'https://via.placeholder.com/100'"
+                                <img :src="appointment.doctor.profilePicture || '/images/user-placeholder.jpg'"
                                     :alt="appointment.doctor.firstName" class="h-12 w-12 rounded-full object-cover" />
                                 <div>
                                     <p class="font-medium text-gray-900">
@@ -50,7 +50,7 @@
                         <div>
                             <h3 class="text-lg font-medium text-gray-900 mb-4">Patient</h3>
                             <div class="flex items-center space-x-4">
-                                <img :src="appointment.patient.profilePicture || 'https://via.placeholder.com/100'"
+                                <img :src="appointment.patient.profilePicture || '/images/user-placeholder.jpg'"
                                     :alt="appointment.patient.firstName" class="h-12 w-12 rounded-full object-cover" />
                                 <div>
                                     <p class="font-medium text-gray-900">

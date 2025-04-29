@@ -47,7 +47,7 @@
             <div v-for="doctor in doctors" :key="doctor._id" class="bg-white shadow rounded-lg overflow-hidden">
               <div class="p-6">
                 <div class="flex items-center space-x-4">
-                  <img :src="doctor.profilePicture || 'https://via.placeholder.com/100'" :alt="doctor.firstName"
+                  <img :src="doctor.profilePicture || '/images/user-placeholder.jpg'" :alt="doctor.firstName"
                     class="h-16 w-16 rounded-full object-cover" />
                   <div>
                     <h3 class="text-lg font-medium text-gray-900">
