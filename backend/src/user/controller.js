@@ -36,17 +36,19 @@ exports.registerUser = async (req, res) => {
 
         // Add role-specific fields
         if (role === 'doctor') {
-            const { specialization, licenseNumber, experience, bio, languages, consultationFee } = req.body;
+            const { specializations, licenseNumber, experience, bio, languages, consultationFee, education, certifications } = req.body;
 
-            user.specialization = specialization;
+            user.specializations = specializations;
             user.licenseNumber = licenseNumber;
             user.experience = experience;
-            user.bio = bio;
+            user.bio = bio ? decodeURIComponent(bio) : '';
             user.languages = languages;
             user.consultationFee = {
                 amount: consultationFee,
                 currency: 'UZS'
             };
+            user.education = education || [];
+            user.certifications = certifications || [];
 
             // Default availability (can be updated later)
             user.availability = [
@@ -56,7 +58,7 @@ exports.registerUser = async (req, res) => {
                 { dayOfWeek: 4, isAvailable: true, startTime: '09:00', endTime: '17:00' },
                 { dayOfWeek: 5, isAvailable: true, startTime: '09:00', endTime: '17:00' },
                 { dayOfWeek: 6, isAvailable: false, startTime: '00:00', endTime: '00:00' },
-                { dayOfWeek: 0, isAvailable: false, startTime: '00:00', endTime: '00:00' }
+                { dayOfWeek: 7, isAvailable: false, startTime: '00:00', endTime: '00:00' }
             ];
         }
         else if (role === 'patient') {
@@ -76,7 +78,6 @@ exports.registerUser = async (req, res) => {
         // Send verification email
         await NotificationService.sendVerificationEmail(user.email, verificationToken);
 
-        // Change: Don't generate JWT token here since the user needs to verify email first
         res.status(201).json({
             success: true,
             message: 'User registered successfully. Please verify your email before logging in.',
@@ -184,7 +185,8 @@ exports.updateUserProfile = async (req, res) => {
         const allowedUpdates = [
             'firstName', 'lastName', 'phone', 'profilePicture',
             'address', 'bio', 'languages', 'availability',
-            'consultationFee', 'medicalHistory', 'emergencyContact'
+            'consultationFee', 'medicalHistory', 'emergencyContact',
+            'specializations', 'education', 'certifications', 'experience'
         ];
 
         const updates = {};
@@ -195,6 +197,11 @@ exports.updateUserProfile = async (req, res) => {
                 updates[key] = req.body[key];
             }
         });
+
+        // Decode bio if present
+        if (updates.bio) {
+            updates.bio = decodeURIComponent(updates.bio);
+        }
 
         // Update user
         const user = await User.findByIdAndUpdate(
@@ -285,11 +292,6 @@ exports.resetPassword = async (req, res) => {
         const { token } = req.params;
         const { password } = req.body;
 
-        const resetPasswordToken = crypto
-                .createHash('sha256')
-                .update(token)
-                .digest('hex');
-
         if (!password) {
             return res.status(400).json({ message: 'Please provide a new password' });
         }
@@ -300,7 +302,7 @@ exports.resetPassword = async (req, res) => {
 
         // Find user with the token and check if token is still valid
         const user = await User.findOne({
-            resetPasswordToken: resetPasswordToken,
+            resetPasswordToken: token,
             resetPasswordExpire: { $gt: Date.now() }
         });
 
@@ -341,7 +343,7 @@ exports.getDoctors = async (req, res) => {
 
         // Apply filters
         if (specialization) {
-            query.specialization = specialization;
+            query.specializations = specialization;
         }
 
         if (name) {
@@ -428,7 +430,7 @@ exports.linkTelegramAccount = async (req, res) => {
     try {
         const { telegramId, verificationCode } = req.body;
 
-        // Verify the code (implementation depends on how you generate and store these codes)
+        // Verify the code
         const user = await User.findOne({
             telegramVerificationCode: verificationCode,
             telegramVerificationExpire: { $gt: Date.now() }

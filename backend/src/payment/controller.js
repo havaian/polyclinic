@@ -171,6 +171,10 @@ async function handleCheckoutSessionCompleted(session) {
         // Update appointment payment status
         const appointment = await Appointment.findById(payment.appointment);
         if (appointment) {
+            // Send success emails
+            await NotificationService.sendPaymentSuccessEmail(payment._id, appointment);
+            await NotificationService.sendDoctorAppointmentEmail(appointment);
+
             appointment.payment.status = 'completed';
             await appointment.save();
 
@@ -201,6 +205,9 @@ async function handleCheckoutSessionExpired(session) {
 
         // Update appointment payment status
         const appointment = await Appointment.findById(payment.appointment);
+        if (appointment) {
+            await NotificationService.sendPaymentFailureEmail(payment._id, appointment);
+        }
         if (appointment && appointment.payment.status === 'pending') {
             appointment.payment.status = 'pending';
             await appointment.save();

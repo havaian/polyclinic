@@ -27,7 +27,7 @@ const userSchema = new Schema({
         type: String,
         required: [true, 'Password is required'],
         minlength: [8, 'Password must be at least 8 characters long'],
-        select: false // Don't return password in queries by default
+        select: false
     },
     phone: {
         type: String,
@@ -60,16 +60,16 @@ const userSchema = new Schema({
         country: String
     },
     // Doctor-specific fields
-    specialization: {
+    specializations: [{
         type: String,
         required: function () { return this.role === 'doctor'; }
-    },
+    }],
     licenseNumber: {
         type: String,
         required: function () { return this.role === 'doctor'; }
     },
     experience: {
-        type: Number, // Years of experience
+        type: Number,
         default: 0,
         required: function () { return this.role === 'doctor'; }
     },
@@ -77,6 +77,12 @@ const userSchema = new Schema({
         degree: String,
         institution: String,
         year: Number
+    }],
+    certifications: [{
+        name: String,
+        issuer: String,
+        year: Number,
+        file: String // URL or path to the uploaded certificate file
     }],
     languages: [{
         type: String
@@ -86,7 +92,7 @@ const userSchema = new Schema({
         maxlength: [500, 'Bio cannot be more than 500 characters']
     },
     availability: [{
-        dayOfWeek: Number, // 0 = Sunday, 1 = Monday, etc.
+        dayOfWeek: Number, // 1 = Monday, 7 = Sunday
         isAvailable: Boolean,
         startTime: String, // Format: "HH:MM"
         endTime: String    // Format: "HH:MM"
@@ -150,9 +156,9 @@ userSchema.virtual('fullName').get(function () {
 });
 
 // Add indexes for searching doctors - removed the duplicate email index
-userSchema.index({ specialization: 1 });
+userSchema.index({ specializations: 1 });
 userSchema.index({ 'address.city': 1 });
-userSchema.index({ firstName: 'text', lastName: 'text', specialization: 'text' });
+userSchema.index({ firstName: 'text', lastName: 'text', specializations: 'text' });
 
 // Encrypt password before saving
 userSchema.pre('save', async function (next) {
@@ -169,6 +175,13 @@ userSchema.pre('save', async function (next) {
     } catch (error) {
         next(error);
     }
+});
+
+userSchema.pre('save', function (next) {
+    if (this.specializations) {
+        this.specializations = [...new Set(this.specializations)];
+    }
+    next();
 });
 
 // Method to check if password matches
@@ -221,7 +234,7 @@ userSchema.statics.findAvailableDoctors = function (specialization) {
         role: 'doctor',
         isActive: true,
         isVerified: true,
-        specialization: specialization || { $exists: true }
+        specializations: specialization || { $exists: true }
     }).select('-password');
 };
 

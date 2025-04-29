@@ -1,4 +1,3 @@
-
 const nodemailer = require('nodemailer');
 const amqp = require('amqplib');
 const { telegramBot } = require('../bot');
@@ -913,6 +912,105 @@ class NotificationService {
             }
         } catch (error) {
             console.error('Error sending consultation start notification:', error);
+        }
+    }
+
+    /**
+     * Send payment success email
+     * @param {String} paymentId Payment ID
+     * @param {Object} appointment Appointment object
+     */
+    async sendPaymentSuccessEmail(paymentId, appointment) {
+        try {
+            const { patient, doctor } = appointment;
+            const formattedDate = new Date(appointment.dateTime).toLocaleString();
+
+            const emailData = {
+                to: patient.email,
+                subject: 'Payment Successful - E-polyclinic.uz',
+                html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #4a90e2;">Payment Successful</h2>
+            <p>Your payment for the appointment has been processed successfully.</p>
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName}</p>
+              <p><strong>Date & Time:</strong> ${formattedDate}</p>
+              <p><strong>Type:</strong> ${appointment.type}</p>
+              <p><strong>Payment ID:</strong> ${paymentId}</p>
+            </div>
+            <p>You can view your appointment details in your E-polyclinic.uz account.</p>
+          </div>
+        `
+            };
+
+            await this.queueEmail(emailData);
+        } catch (error) {
+            console.error('Error sending payment success email:', error);
+        }
+    }
+
+    /**
+     * Send doctor appointment email
+     * @param {Object} appointment Appointment object
+     */
+    async sendDoctorAppointmentEmail(appointment) {
+        try {
+            const { patient, doctor, dateTime } = appointment;
+            const formattedDate = new Date(dateTime).toLocaleString();
+
+            const emailData = {
+                to: doctor.email,
+                subject: 'New Appointment Confirmed - E-polyclinic.uz',
+                html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #4a90e2;">New Appointment Confirmed</h2>
+            <p>A new appointment has been scheduled and payment has been received.</p>
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p><strong>Patient:</strong> ${patient.firstName} ${patient.lastName}</p>
+              <p><strong>Date & Time:</strong> ${formattedDate}</p>
+              <p><strong>Type:</strong> ${appointment.type}</p>
+            </div>
+            <p>Please log in to your E-polyclinic.uz account to view the appointment details.</p>
+          </div>
+        `
+            };
+
+            await this.queueEmail(emailData);
+        } catch (error) {
+            console.error('Error sending doctor appointment email:', error);
+        }
+    }
+
+    /**
+     * Send payment failure email
+     * @param {String} paymentId Payment ID
+     * @param {Object} appointment Appointment object
+     */
+    async sendPaymentFailureEmail(paymentId, appointment) {
+        try {
+            const { patient, doctor } = appointment;
+            const formattedDate = new Date(appointment.dateTime).toLocaleString();
+
+            const emailData = {
+                to: patient.email,
+                subject: 'Payment Failed - E-polyclinic.uz',
+                html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #e74c3c;">Payment Failed</h2>
+            <p>We were unable to process your payment for the following appointment:</p>
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName}</p>
+              <p><strong>Date & Time:</strong> ${formattedDate}</p>
+              <p><strong>Type:</strong> ${appointment.type}</p>
+            </div>
+            <p>Please try booking again or contact support if you need assistance.</p>
+          </div>
+        `
+            };
+
+            await this.queueEmail(emailData);
+        } catch (error) {
+            console.error('Error sending payment failure email:', error);
         }
     }
 }
