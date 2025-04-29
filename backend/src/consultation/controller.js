@@ -41,12 +41,6 @@ class ConsultationController {
             const isDoctor = req.user.role === 'doctor' && appointment.doctor._id.toString() === userId.toString();
             const isPatient = req.user.role === 'patient' && appointment.patient._id.toString() === userId.toString();
 
-            console.log(userId)
-            console.log(appointment.doctor._id)
-            console.log(appointment.patient._id)
-            console.log(isDoctor);
-            console.log(isPatient);
-
             if (!isDoctor && !isPatient) {
                 return res.status(403).json({ message: 'You are not authorized to join this consultation' });
             }
