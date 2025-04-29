@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 // const mongoSanitize = require('express-mongo-sanitize');
 // const xss = require('xss-clean');
 const cookieParser = require('cookie-parser');
+const scheduleAppointmentReminders = require('./src/cron/appointmentReminders');
 
 // Load environment variables
 require('dotenv').config();
@@ -208,6 +209,9 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/consultations', consultationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/specializations', specializationRoutes);
+
+// Initialize cron jobs
+scheduleAppointmentReminders();
 
 // Health check route
 app.get('/api/health', (req, res) => {

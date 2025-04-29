@@ -37,7 +37,7 @@
                                     <p class="font-medium text-gray-900">
                                         Dr. {{ appointment.doctor.firstName }} {{ appointment.doctor.lastName }}
                                     </p>
-                                    <div class="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
+                                    <div class="mt-2 flex flex-wrap gap-2">
                                         <span v-for="spec in appointment.doctor.specializations" :key="spec"
                                             class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                                             {{ spec }}
@@ -85,39 +85,14 @@
                         <p class="text-gray-900">{{ appointment.reasonForVisit }}</p>
                     </div>
 
-                    <!-- Consultation Summary (if completed) -->
-                    <template v-if="appointment.status === 'completed'">
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Consultation Summary</h3>
-                            <p class="text-gray-900">{{ appointment.consultationSummary || 'No summary provided.' }}</p>
-                        </div>
-
-                        <!-- Prescriptions -->
-                        <div v-if="appointment.prescriptions?.length">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Prescriptions</h3>
-                            <div class="space-y-4">
-                                <div v-for="(prescription, index) in appointment.prescriptions" :key="index"
-                                    class="bg-gray-50 p-4 rounded-lg">
-                                    <p class="font-medium text-gray-900">{{ prescription.medication }}</p>
-                                    <p class="text-gray-600">Dosage: {{ prescription.dosage }}</p>
-                                    <p class="text-gray-600">Frequency: {{ prescription.frequency }}</p>
-                                    <p class="text-gray-600">Duration: {{ prescription.duration }}</p>
-                                    <p v-if="prescription.instructions" class="text-gray-600 mt-2">
-                                        Instructions: {{ prescription.instructions }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-
                     <!-- Actions -->
                     <div class="flex justify-end space-x-4">
                         <button v-if="appointment.status === 'scheduled' && authStore.isPatient"
                             class="btn-secondary text-red-600 hover:text-red-700" @click="cancelAppointment">
                             Cancel Appointment
                         </button>
-                        <button v-if="appointment.status === 'scheduled' && isWithinJoinWindow(appointment.dateTime)"
-                            class="btn-primary" @click="joinConsultation">
+                        <button v-if="appointment.status === 'scheduled' && isWithinJoinWindow" class="btn-primary"
+                            @click="joinConsultation">
                             {{ authStore.isDoctor ? 'Start Consultation' : 'Join Consultation' }}
                         </button>
                     </div>
@@ -132,7 +107,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { format, parseISO, differenceInYears, isWithinInterval, subMinutes, addMinutes } from 'date-fns'
@@ -153,14 +128,17 @@ const calculateAge = (dateOfBirth) => {
     return differenceInYears(new Date(), parseISO(dateOfBirth))
 }
 
-const isWithinJoinWindow = (dateTime) => {
-    const appointmentTime = parseISO(dateTime)
+const isWithinJoinWindow = computed(() => {
+    if (!appointment.value?.dateTime) return false
+
+    const appointmentTime = parseISO(appointment.value.dateTime)
     const now = new Date()
+
     return isWithinInterval(now, {
         start: subMinutes(appointmentTime, 5),
         end: addMinutes(appointmentTime, 30)
     })
-}
+})
 
 async function fetchAppointment() {
     try {

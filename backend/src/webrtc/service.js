@@ -1,336 +1,174 @@
-const socket = require('socket.io');
-const { redisClient } = require('../utils/redisClient');
+const { Server } = require('socket.io');
+const wrtc = require('wrtc');
 
-/**
- * WebRTC Service for handling real-time video consultations
- */
 class WebRTCService {
-    /**
-     * Initialize WebRTC service with Express server
-     * @param {Object} server - HTTP server instance
-     */
     constructor(server) {
-        this.io = socket(server, {
+        this.io = new Server(server, {
             cors: {
                 origin: process.env.FRONTEND_URL || '*',
-                methods: ['GET', 'POST'],
-                credentials: true
-            },
-            path: '/socket.io'
+                methods: ['GET', 'POST']
+            }
         });
 
         this.rooms = new Map();
-        this.setupSocketHandlers();
+        this.peerConnections = new Map();
 
-        console.log('✅ WebRTC service initialized');
+        this.setupSocketHandlers();
     }
 
-    /**
-     * Set up socket event handlers
-     */
     setupSocketHandlers() {
         this.io.on('connection', (socket) => {
-            console.log(`✅ Socket connected: ${socket.id}`);
+            console.log('Client connected:', socket.id);
 
-            // Store user information
-            socket.on('register', async (data) => {
-                try {
-                    const { userId, userType, appointmentId } = data;
+            socket.on('join-room', async (data) => {
+                const { roomId, userId, userType } = data;
 
-                    if (!userId || !userType || !appointmentId) {
-                        socket.emit('error', { message: '❌ Missing required data' });
-                        return;
-                    }
+                // Join the room
+                socket.join(roomId);
+                socket.roomId = roomId;
+                socket.userId = userId;
+                socket.userType = userType;
 
-                    // Store user info in socket
-                    socket.userId = userId;
-                    socket.userType = userType; // 'doctor' or 'patient'
-                    socket.appointmentId = appointmentId;
-
-                    // Join room based on appointment ID
-                    socket.join(appointmentId);
-
-                    // Store socket info in Redis for recovery after server restart
-                    await redisClient.hSet(`socket:${socket.id}`, {
-                        userId,
-                        userType,
-                        appointmentId
-                    });
-
-                    // Add user to room tracking
-                    if (!this.rooms.has(appointmentId)) {
-                        this.rooms.set(appointmentId, new Set());
-                    }
-                    this.rooms.get(appointmentId).add(socket.id);
-
-                    // Notify user of successful registration
-                    socket.emit('registered', {
-                        success: true,
-                        message: '✅ Successfully registered for consultation'
-                    });
-
-                    // Notify room that new user joined
-                    this.io.to(appointmentId).emit('user-joined', {
-                        userId,
-                        userType
-                    });
-
-                    // Get room participants
-                    const participants = [];
-                    this.rooms.get(appointmentId).forEach(socketId => {
-                        if (socketId !== socket.id) {
-                            const participantSocket = this.io.sockets.sockets.get(socketId);
-                            if (participantSocket) {
-                                participants.push({
-                                    userId: participantSocket.userId,
-                                    userType: participantSocket.userType
-                                });
-                            }
-                        }
-                    });
-
-                    // Send room status (empty or doctor/patient already waiting)
-                    socket.emit('room-status', {
-                        appointmentId,
-                        participants
-                    });
-                } catch (error) {
-                    console.error('❌ Error during registration:', error);
-                    socket.emit('error', { message: '❌ Registration failed' });
+                // Initialize room if it doesn't exist
+                if (!this.rooms.has(roomId)) {
+                    this.rooms.set(roomId, new Set());
                 }
-            });
+                this.rooms.get(roomId).add(socket.id);
 
-            // Signaling - pass WebRTC signaling data between peers
-            socket.on('signal', (data) => {
-                const { appointmentId, signal, targetUserId } = data;
-
-                if (!appointmentId || !signal) {
-                    socket.emit('error', { message: '❌ Missing required data' });
-                    return;
-                }
-
-                // If target user specified, send only to them, otherwise broadcast to room
-                if (targetUserId) {
-                    // Find target user socket
-                    let targetSocket;
-                    this.rooms.get(appointmentId)?.forEach(socketId => {
-                        const s = this.io.sockets.sockets.get(socketId);
-                        if (s && s.userId === targetUserId) {
-                            targetSocket = s;
-                        }
-                    });
-
-                    // Send signal to target user
-                    if (targetSocket) {
-                        targetSocket.emit('signal', {
-                            signal,
-                            userId: socket.userId,
-                            userType: socket.userType
-                        });
-                    } else {
-                        socket.emit('error', { message: '❌ Target user not found' });
-                    }
-                } else {
-                    // Broadcast to all other users in room
-                    socket.to(appointmentId).emit('signal', {
-                        signal,
-                        userId: socket.userId,
-                        userType: socket.userType
-                    });
-                }
-            });
-
-            // Chat messaging within consultation
-            socket.on('chat-message', (data) => {
-                const { appointmentId, message } = data;
-
-                if (!appointmentId || !message) {
-                    socket.emit('error', { message: '❌ Missing required data' });
-                    return;
-                }
-
-                // Broadcast message to room
-                this.io.to(appointmentId).emit('chat-message', {
-                    userId: socket.userId,
-                    userType: socket.userType,
-                    message,
-                    timestamp: new Date().toISOString()
+                // Notify others in the room
+                socket.to(roomId).emit('user-connected', {
+                    userId,
+                    userType
                 });
-            });
 
-            // User toggled audio/video
-            socket.on('media-toggle', (data) => {
-                const { appointmentId, video, audio } = data;
-
-                if (!appointmentId || video === undefined || audio === undefined) {
-                    socket.emit('error', { message: '❌ Missing required data' });
-                    return;
-                }
-
-                // Broadcast media state to others in room
-                socket.to(appointmentId).emit('media-toggle', {
-                    userId: socket.userId,
-                    userType: socket.userType,
-                    video,
-                    audio
-                });
-            });
-
-            // Screen sharing
-            socket.on('screen-share-toggle', (data) => {
-                const { appointmentId, sharing } = data;
-
-                if (!appointmentId || sharing === undefined) {
-                    socket.emit('error', { message: '❌ Missing required data' });
-                    return;
-                }
-
-                // Broadcast screen sharing state to room
-                socket.to(appointmentId).emit('screen-share-toggle', {
-                    userId: socket.userId,
-                    userType: socket.userType,
-                    sharing
-                });
-            });
-
-            // Consultation controls (doctors only)
-            socket.on('consultation-control', (data) => {
-                const { appointmentId, action } = data;
-
-                if (!appointmentId || !action) {
-                    socket.emit('error', { message: '❌ Missing required data' });
-                    return;
-                }
-
-                // Only doctors can control consultation
-                if (socket.userType !== 'doctor') {
-                    socket.emit('error', { message: '❌ Unauthorized to control consultation' });
-                    return;
-                }
-
-                // Broadcast control action to room
-                this.io.to(appointmentId).emit('consultation-control', {
-                    action,
-                    timestamp: new Date().toISOString()
-                });
-            });
-
-            // End consultation (doctors only)
-            socket.on('end-consultation', async (data) => {
-                const { appointmentId, summary } = data;
-
-                if (!appointmentId) {
-                    socket.emit('error', { message: '❌ Missing required data' });
-                    return;
-                }
-
-                // Only doctors can end consultation
-                if (socket.userType !== 'doctor') {
-                    socket.emit('error', { message: '❌ Unauthorized to end consultation' });
-                    return;
-                }
-
-                try {
-                    // Update appointment status in database
-                    if (summary) {
-                        const Appointment = require('./appointment/model');
-                        const appointment = await Appointment.findById(appointmentId);
-
-                        if (appointment) {
-                            appointment.status = 'completed';
-                            appointment.consultationSummary = summary;
-                            await appointment.save();
-                        }
-                    }
-
-                    // Broadcast consultation end to room
-                    this.io.to(appointmentId).emit('consultation-ended', {
-                        message: '❌ Consultation has ended',
-                        timestamp: new Date().toISOString()
-                    });
-                } catch (error) {
-                    console.error('Error ending consultation:', error);
-                    socket.emit('error', { message: '❌ Failed to end consultation' });
-                }
-            });
-
-            // User disconnected
-            socket.on('disconnect', () => {
-                try {
-                    const { appointmentId, userId, userType } = socket;
-
-                    // Remove from room tracking
-                    if (appointmentId && this.rooms.has(appointmentId)) {
-                        this.rooms.get(appointmentId).delete(socket.id);
-
-                        // Delete room if empty
-                        if (this.rooms.get(appointmentId).size === 0) {
-                            this.rooms.delete(appointmentId);
-                        } else {
-                            // Notify room that user left
-                            this.io.to(appointmentId).emit('user-left', {
-                                userId,
-                                userType
+                // Send current participants to the new user
+                const participants = [];
+                this.rooms.get(roomId).forEach(participantId => {
+                    if (participantId !== socket.id) {
+                        const participant = this.io.sockets.sockets.get(participantId);
+                        if (participant) {
+                            participants.push({
+                                socketId: participantId,
+                                userId: participant.userId,
+                                userType: participant.userType
                             });
                         }
                     }
+                });
 
-                    // Remove socket info from Redis
-                    redisClient.del(`socket:${socket.id}`).catch(err => {
-                        console.error('❌ Error removing socket from Redis:', err);
+                socket.emit('room-users', participants);
+            });
+
+            socket.on('offer', async (data) => {
+                const { targetId, description } = data;
+                socket.to(targetId).emit('offer', {
+                    from: socket.id,
+                    description
+                });
+            });
+
+            socket.on('answer', (data) => {
+                const { targetId, description } = data;
+                socket.to(targetId).emit('answer', {
+                    from: socket.id,
+                    description
+                });
+            });
+
+            socket.on('ice-candidate', (data) => {
+                const { targetId, candidate } = data;
+                socket.to(targetId).emit('ice-candidate', {
+                    from: socket.id,
+                    candidate
+                });
+            });
+
+            socket.on('chat-message', (data) => {
+                const { roomId, message } = data;
+                this.io.to(roomId).emit('chat-message', {
+                    userId: socket.userId,
+                    userType: socket.userType,
+                    message,
+                    timestamp: new Date()
+                });
+            });
+
+            socket.on('toggle-media', (data) => {
+                const { roomId, audio, video } = data;
+                socket.to(roomId).emit('user-media-toggle', {
+                    userId: socket.userId,
+                    audio,
+                    video
+                });
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Client disconnected:', socket.id);
+
+                if (socket.roomId && this.rooms.has(socket.roomId)) {
+                    // Remove from room
+                    this.rooms.get(socket.roomId).delete(socket.id);
+
+                    // Notify others
+                    socket.to(socket.roomId).emit('user-disconnected', {
+                        userId: socket.userId
                     });
 
-                    console.log(`❌ Socket disconnected: ${socket.id}`);
-                } catch (error) {
-                    console.error('❌ Error handling disconnect:', error);
+                    // Clean up room if empty
+                    if (this.rooms.get(socket.roomId).size === 0) {
+                        this.rooms.delete(socket.roomId);
+                    }
+                }
+
+                // Clean up peer connection
+                if (this.peerConnections.has(socket.id)) {
+                    this.peerConnections.get(socket.id).close();
+                    this.peerConnections.delete(socket.id);
                 }
             });
         });
     }
 
-    /**
-     * Get information about active consultation rooms
-     * @returns {Object} Room statistics
-     */
-    getStats() {
+    // Get room statistics
+    getRoomStats() {
         const stats = {
-            activeRooms: this.rooms.size,
+            totalRooms: this.rooms.size,
             totalConnections: this.io.sockets.sockets.size,
             rooms: []
         };
 
-        this.rooms.forEach((sockets, roomId) => {
+        this.rooms.forEach((participants, roomId) => {
             stats.rooms.push({
                 roomId,
-                participants: sockets.size
+                participants: participants.size
             });
         });
 
         return stats;
     }
 
-    /**
-     * Close a specific consultation room
-     * @param {String} appointmentId - Room/appointment ID to close
-     */
-    closeRoom(appointmentId) {
-        if (this.rooms.has(appointmentId)) {
-            // Notify all users in room
-            this.io.to(appointmentId).emit('room-closed', {
-                message: '❌ This consultation has been closed by the system',
-                timestamp: new Date().toISOString()
+    // Close a specific room
+    closeRoom(roomId) {
+        if (this.rooms.has(roomId)) {
+            // Notify all participants
+            this.io.to(roomId).emit('room-closed', {
+                message: 'This consultation has been ended by the doctor'
             });
 
-            // Disconnect all sockets in room
-            this.rooms.get(appointmentId).forEach(socketId => {
+            // Disconnect all participants
+            this.rooms.get(roomId).forEach(socketId => {
                 const socket = this.io.sockets.sockets.get(socketId);
                 if (socket) {
-                    socket.leave(appointmentId);
+                    socket.leave(roomId);
+                    if (this.peerConnections.has(socketId)) {
+                        this.peerConnections.get(socketId).close();
+                        this.peerConnections.delete(socketId);
+                    }
                 }
             });
 
             // Remove room
-            this.rooms.delete(appointmentId);
+            this.rooms.delete(roomId);
         }
     }
 }

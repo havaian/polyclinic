@@ -6,11 +6,8 @@ const { NotificationService } = require('../notification');
 // Create a new appointment
 exports.createAppointment = async (req, res) => {
     try {
-        // Get patient ID from authenticated user
         const patientId = req.user.id;
         
-        // Create a copy of the request body without patientId
-        // This ensures we don't pass any disallowed fields to the validator
         const { doctorId, dateTime, type, reasonForVisit, notes } = req.body;
         const appointmentData = {
             doctorId,
@@ -22,6 +19,18 @@ exports.createAppointment = async (req, res) => {
         
         const { error } = validateAppointmentInput(appointmentData);
         if (error) {
+            // Send failure email to patient
+            const patient = await User.findById(patientId);
+            const doctor = await User.findById(doctorId);
+            
+            await emailService.sendAppointmentFailedEmail({
+                patient,
+                doctor,
+                dateTime,
+                type,
+                error: error.details[0].message
+            });
+            
             return res.status(400).json({ message: error.details[0].message });
         }
 
@@ -31,30 +40,39 @@ exports.createAppointment = async (req, res) => {
             return res.status(404).json({ message: 'Doctor not found' });
         }
 
-        // Verify that patient exists (should always exist since they're authenticated)
+        // Verify that patient exists
         const patient = await User.findById(patientId);
         if (!patient || patient.role !== 'patient') {
             return res.status(404).json({ message: 'Patient not found' });
         }
 
-        // Check if the doctor is available at the requested time
+        // Check if the doctor is available
         const appointmentDate = new Date(dateTime);
         const conflictingAppointment = await Appointment.findOne({
             doctor: doctorId,
             dateTime: {
-                $gte: new Date(appointmentDate.getTime() - 30 * 60000), // 30 minutes before
-                $lte: new Date(appointmentDate.getTime() + 30 * 60000)  // 30 minutes after
+                $gte: new Date(appointmentDate.getTime() - 30 * 60000),
+                $lte: new Date(appointmentDate.getTime() + 30 * 60000)
             },
             status: 'scheduled'
         });
 
         if (conflictingAppointment) {
+            // Send failure email to patient
+            await emailService.sendAppointmentFailedEmail({
+                patient,
+                doctor,
+                dateTime,
+                type,
+                error: 'Doctor is not available at this time'
+            });
+            
             return res.status(409).json({ message: 'Doctor is not available at this time' });
         }
 
         // Create new appointment
         const appointment = new Appointment({
-            patient: patientId,  // Use ID from authenticated user
+            patient: patientId,
             doctor: doctorId,
             dateTime: appointmentDate,
             type,
@@ -64,8 +82,12 @@ exports.createAppointment = async (req, res) => {
 
         await appointment.save();
 
-        // Send notifications
-        await NotificationService.sendAppointmentConfirmation(appointment);
+        // Send confirmation emails
+        await emailService.sendAppointmentBookedEmails({
+            ...appointment.toObject(),
+            patient,
+            doctor
+        });
 
         res.status(201).json({
             message: 'Appointment created successfully',
@@ -183,7 +205,10 @@ exports.updateAppointmentStatus = async (req, res) => {
         const { id } = req.params;
         const { status, consultationSummary } = req.body;
 
-        const appointment = await Appointment.findById(id);
+        const appointment = await Appointment.findById(id)
+            .populate('patient')
+            .populate('doctor');
+            
         if (!appointment) {
             return res.status(404).json({ message: 'Appointment not found' });
         }
@@ -202,6 +227,7 @@ exports.updateAppointmentStatus = async (req, res) => {
             });
         }
 
+        const oldStatus = appointment.status;
         appointment.status = status;
 
         if (status === 'completed' && consultationSummary) {
@@ -210,11 +236,10 @@ exports.updateAppointmentStatus = async (req, res) => {
 
         await appointment.save();
 
-        // Send notifications based on status change
-        if (status === 'canceled') {
-            await NotificationService.sendAppointmentCancellation(appointment);
-        } else if (status === 'completed') {
-            await NotificationService.sendAppointmentCompletionNotification(appointment);
+        // Send cancellation emails if appointment was canceled
+        if (status === 'canceled' && oldStatus === 'scheduled') {
+            const cancelledBy = req.user.role === 'doctor' ? 'doctor' : 'patient';
+            await emailService.sendAppointmentCancelledEmails(appointment, cancelledBy);
         }
 
         res.status(200).json({

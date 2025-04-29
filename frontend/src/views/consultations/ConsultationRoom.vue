@@ -7,7 +7,7 @@
                     <div class="flex items-center">
                         <h1 class="text-xl font-bold text-gray-900">
                             Consultation with {{ isDoctor ? consultation?.patient?.name : 'Dr. ' +
-                            consultation?.doctor?.name }}
+                                consultation?.doctor?.name }}
                         </h1>
                         <span class="ml-4 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium" :class="{
                             'bg-green-100 text-green-800': isConnected,
@@ -105,11 +105,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { format } from 'date-fns'
 import { io } from 'socket.io-client'
+import axios from 'axios'
 
 const route = useRoute()
 const router = useRouter()

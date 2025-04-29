@@ -151,6 +151,17 @@ const router = createRouter({
         requiresAuth: true
       }
     },
+    // Consultation routes
+    {
+      path: '/consultation/:appointmentId',
+      name: 'consultation-room',
+      component: () => import('@/views/consultations/ConsultationRoom.vue'),
+      meta: {
+        requiresAuth: true,
+        hideNavBar: true,
+        hideFooter: true
+      }
+    },
     // Error routes
     {
       path: '/:pathMatch(.*)*',
