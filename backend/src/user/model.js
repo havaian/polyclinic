@@ -50,7 +50,7 @@ const userSchema = new Schema({
     },
     profilePicture: {
         type: String,
-        default: 'default.jpg'
+        default: '/images/user-placeholder.jpg'
     },
     address: {
         street: String,
