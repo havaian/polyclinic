@@ -2,6 +2,7 @@ const Appointment = require('./model.js');
 const User = require('../user/model.js');
 const { validateAppointmentInput } = require('../utils/validators');
 const { NotificationService } = require('../notification');
+const emailService = require('../notification/emailService.js');
 
 // Create a new appointment
 exports.createAppointment = async (req, res) => {
