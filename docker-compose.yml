@@ -117,7 +117,7 @@ services:
   #   env_file:
   #     - ./.env
   #   environment:
-  #     - VUE_APP_API_URL=http://backend:${BACKEND_PORT}
+  #     - VUE_APP_API_URL=https://e-polyclinic.uz/api
   #     - VUE_APP_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
   #   ports:
   #     - "${FRONTEND_EXPOSE}:5173"
