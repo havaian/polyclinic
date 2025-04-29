@@ -17,15 +17,13 @@ require('dotenv').config();
 // Connect to MongoDB
 require('./db');
 
-const WebRTCService = require('./src/webrtc/service');
-
 // Import routes
 const userRoutes = require('./src/user/routes');
 const appointmentRoutes = require('./src/appointment/routes');
 const telegramRoutes = require('./src/bot/routes');
 const assistantRoutes = require('./src/assistant/routes');
 const paymentRoutes = require('./src/payment/routes');
-const { initializeConsultationRoutes } = require('./src/consultation/routes');
+const consultationRoutes = require('./src/consultation/routes');
 const adminRoutes = require('./src/admin/routes');
 const specializationRoutes = require('./src/specializations/routes');
 
@@ -191,14 +189,8 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Create HTTP server (needs to be before the app.listen call)
+// Create HTTP server
 const server = require('http').createServer(app);
-
-// Initialize WebRTC service
-const webRTCService = new WebRTCService(server);
-
-// Initialize and register consultation routes
-const consultationRoutes = initializeConsultationRoutes(webRTCService);
 
 // Routes
 app.use('/api/users', userRoutes);
@@ -237,7 +229,6 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-// Use server.listen instead of app.listen
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`✅ PORT ${PORT}`);
@@ -264,9 +255,4 @@ process.on('uncaughtException', err => {
     process.exit(1);
 });
 
-// Export WebRTC service for testing
-module.exports = {
-    app,
-    server,
-    webRTCService
-};
+module.exports = { app, server };

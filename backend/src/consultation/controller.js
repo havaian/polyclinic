@@ -1,17 +1,17 @@
 const Appointment = require('../appointment/model');
 const User = require('../user/model');
-const { authenticateUser } = require('../auth');
+const JitsiUtils = require('../utils/jitsiUtils');
+const { NotificationService } = require('../notification');
 
 /**
  * Controller for handling consultation-related operations
  */
 class ConsultationController {
     /**
-     * Initialize consultation controller with WebRTC service
-     * @param {Object} webRTCService - WebRTC service instance
+     * Initialize consultation controller
      */
-    constructor(webRTCService) {
-        this.webRTCService = webRTCService;
+    constructor() {
+        // No need for webRTCService with Jitsi integration
     }
 
     /**
@@ -30,16 +30,22 @@ class ConsultationController {
 
             // Find appointment
             const appointment = await Appointment.findById(appointmentId)
-                .populate('doctor', 'firstName lastName profilePicture specializations')
-                .populate('patient', 'firstName lastName profilePicture dateOfBirth');
+                .populate('doctor', 'firstName lastName profilePicture specializations email')
+                .populate('patient', 'firstName lastName profilePicture dateOfBirth email');
 
             if (!appointment) {
                 return res.status(404).json({ message: 'Appointment not found' });
             }
 
             // Check if user is involved in the appointment
-            const isDoctor = req.user.role === 'doctor' && appointment.doctor._id.toString() === userId;
-            const isPatient = req.user.role === 'patient' && appointment.patient._id.toString() === userId;
+            const isDoctor = req.user.role === 'doctor' && appointment.doctor._id.toString() === userId.toString();
+            const isPatient = req.user.role === 'patient' && appointment.patient._id.toString() === userId.toString();
+
+            console.log(userId)
+            console.log(appointment.doctor._id)
+            console.log(appointment.patient._id)
+            console.log(isDoctor);
+            console.log(isPatient);
 
             if (!isDoctor && !isPatient) {
                 return res.status(403).json({ message: 'You are not authorized to join this consultation' });
@@ -71,8 +77,19 @@ class ConsultationController {
                 return res.status(400).json({ message: 'Consultation time has expired' });
             }
 
-            // Generate TURN server credentials
-            const turnCredentials = this.generateTurnCredentials();
+            // User info for Jitsi token
+            const userInfo = {
+                id: userId,
+                name: isDoctor ?
+                    `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}` :
+                    `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+                avatar: isDoctor ? appointment.doctor.profilePicture : appointment.patient.profilePicture,
+                email: isDoctor ? appointment.doctor.email : appointment.patient.email,
+                role: isDoctor ? 'doctor' : 'patient'
+            };
+
+            // Generate Jitsi configuration
+            const jitsiConfig = JitsiUtils.getJitsiConfig(appointmentId, userInfo);
 
             // Prepare response with consultation info
             res.status(200).json({
@@ -95,7 +112,7 @@ class ConsultationController {
                     dateTime: appointment.dateTime,
                     reasonForVisit: appointment.reasonForVisit,
                     userRole: isDoctor ? 'doctor' : 'patient',
-                    turnCredentials
+                    jitsi: jitsiConfig
                 }
             });
         } catch (error) {
@@ -145,8 +162,8 @@ class ConsultationController {
 
             await appointment.save();
 
-            // Close the WebRTC room
-            this.webRTCService.closeRoom(appointmentId);
+            // Send completion notification
+            await NotificationService.sendAppointmentCompletionNotification(appointment);
 
             res.status(200).json({
                 message: 'Consultation ended successfully',
@@ -159,11 +176,11 @@ class ConsultationController {
     };
 
     /**
-     * Get consultation (webRTC) status
+     * Get consultation status
      * @param {Object} req - Express request object
      * @param {Object} res - Express response object
      */
-    getConsultationStatus = (req, res) => {
+    getConsultationStatus = async (req, res) => {
         try {
             const { appointmentId } = req.params;
 
@@ -171,18 +188,17 @@ class ConsultationController {
                 return res.status(400).json({ message: 'Appointment ID is required' });
             }
 
-            // Get room status from WebRTC service
-            const stats = this.webRTCService.getStats();
-            const room = stats.rooms.find(r => r.roomId === appointmentId);
+            // Find appointment
+            const appointment = await Appointment.findById(appointmentId);
 
-            // Determine if consultation is active
-            const isActive = !!room;
-            const participantCount = room ? room.participants : 0;
+            if (!appointment) {
+                return res.status(404).json({ message: 'Appointment not found' });
+            }
 
             res.status(200).json({
                 appointmentId,
-                isActive,
-                participantCount,
+                status: appointment.status,
+                isActive: appointment.status === 'scheduled',
                 timestamp: new Date().toISOString()
             });
         } catch (error) {
@@ -190,29 +206,6 @@ class ConsultationController {
             res.status(500).json({ message: 'An error occurred while checking consultation status' });
         }
     };
-
-    /**
-     * Generate TURN server credentials
-     * @returns {Object} TURN credentials
-     */
-    generateTurnCredentials() {
-        // This is a simple example - in production, use a proper TURN authentication mechanism
-        const username = process.env.TURN_USERNAME || 'default';
-        const credential = process.env.TURN_CREDENTIAL || 'default';
-        const turnServerUrl = process.env.TURN_SERVER || 'turn:turn.e-polyclinic.uz:3478';
-
-        return {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                {
-                    urls: turnServerUrl,
-                    username: username,
-                    credential: credential
-                }
-            ]
-        };
-    }
 }
 
 module.exports = ConsultationController;

@@ -107,7 +107,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { format, parseISO, differenceInYears, isWithinInterval, subMinutes, addMinutes } from 'date-fns'
@@ -134,10 +134,12 @@ const isWithinJoinWindow = computed(() => {
     const appointmentTime = parseISO(appointment.value.dateTime)
     const now = new Date()
 
-    return isWithinInterval(now, {
-        start: subMinutes(appointmentTime, 5),
-        end: addMinutes(appointmentTime, 30)
-    })
+    return true;
+
+    // return isWithinInterval(now, {
+    //     start: subMinutes(appointmentTime, 5),
+    //     end: addMinutes(appointmentTime, 30)
+    // })
 })
 
 async function fetchAppointment() {
