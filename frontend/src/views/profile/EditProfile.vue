@@ -54,7 +54,7 @@
                                         class="flex gap-2">
                                         <select v-model="formData.specializations[index]" class="input flex-1">
                                             <option value="">Select Specialization</option>
-                                            <option v-for="s in availableSpecializations" :key="s" :value="s">{{ s }}
+                                            <option v-for="spec in availableSpecializations" :key="spec" :value="spec">{{ spec }}
                                             </option>
                                         </select>
                                         <button type="button" @click="removeSpecialization(index)"
@@ -229,20 +229,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 const loading = ref(false)
 
-const availableSpecializations = [
-    'Cardiology',
-    'Dermatology',
-    'Endocrinology',
-    'Family Medicine',
-    'Gastroenterology',
-    'Neurology',
-    'Obstetrics & Gynecology',
-    'Ophthalmology',
-    'Pediatrics',
-    'Psychiatry',
-    'Pulmonology',
-    'Urology'
-]
+// Replace the hardcoded specializations with a ref to be filled from API
+const availableSpecializations = ref([])
 
 const formData = reactive({
     firstName: '',
@@ -313,6 +301,29 @@ const formatDay = (dayOfWeek) => {
     return days[dayOfWeek - 1]
 }
 
+// Added function to fetch specializations from the API
+async function fetchSpecializations() {
+    try {
+        const response = await axios.get('/api/specializations')
+        availableSpecializations.value = response.data.specializations.map(s => s.name)
+    } catch (error) {
+        console.error('Error fetching specializations:', error)
+        // Set some defaults in case API call fails
+        availableSpecializations.value = [
+            'Cardiology',
+            'Dermatology',
+            'Endocrinology',
+            'Family Medicine',
+            'Gastroenterology',
+            'Neurology',
+            'Obstetrics & Gynecology',
+            'Ophthalmology',
+            'Pediatrics',
+            'Psychiatry'
+        ]
+    }
+}
+
 async function fetchUserProfile() {
     try {
         const response = await axios.get('/api/users/me')
@@ -325,10 +336,14 @@ async function fetchUserProfile() {
         formData.address = user.address || { street: '', city: '' }
 
         if (authStore.isDoctor) {
-            formData.specializations = user.specializations || [user.specialization] || []
+            // Handle specializations properly as an array
+            formData.specializations = Array.isArray(user.specializations) ? 
+                user.specializations : 
+                (user.specialization ? [user.specialization] : [])
+                
             formData.education = user.education || []
             formData.certifications = user.certifications || []
-            formData.consultationFee = user.consultationFee?.amount || 0
+            formData.consultationFee = user.consultationFee || 0
             formData.experience = user.experience || 0
             formData.languages = user.languages || []
             formData.bio = user.bio || ''
@@ -362,6 +377,7 @@ async function handleSubmit() {
         }
 
         if (authStore.isDoctor) {
+            // Ensure specializations is an array of non-empty strings
             updateData.specializations = formData.specializations.filter(Boolean)
             updateData.education = formData.education.filter(e => e.degree && e.institution && e.year)
             updateData.certifications = formData.certifications.filter(c => c.name && c.issuer && c.year)
@@ -389,5 +405,9 @@ async function handleSubmit() {
 
 onMounted(() => {
     fetchUserProfile()
+    // Fetch specializations if user is a doctor
+    if (authStore.isDoctor) {
+        fetchSpecializations()
+    }
 })
 </script>

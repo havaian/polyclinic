@@ -37,7 +37,12 @@
                                     <p class="font-medium text-gray-900">
                                         Dr. {{ appointment.doctor.firstName }} {{ appointment.doctor.lastName }}
                                     </p>
-                                    <p class="text-sm text-gray-500">{{ appointment.doctor.specialization }}</p>
+                                    <div class="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
+                                        <span v-for="spec in appointment.doctor.specializations" :key="spec"
+                                            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                            {{ spec }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

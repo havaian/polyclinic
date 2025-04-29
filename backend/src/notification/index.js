@@ -414,7 +414,7 @@ class NotificationService {
             <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <p><strong>Date and Time:</strong> ${formattedDateTime}</p>
               <p><strong>Consultation Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
-              <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specialization})</p>
+              <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specializations})</p>
             </div>
             <p>You can view your appointment details and join the consultation by logging into your E-polyclinic.uz account.</p>
           </div>
@@ -501,7 +501,7 @@ class NotificationService {
             <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <p><strong>Date and Time:</strong> ${formattedDateTime}</p>
               <p><strong>Consultation Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
-              <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specialization})</p>
+              <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specializations})</p>
             </div>
             <p>You can schedule a new appointment by logging into your E-polyclinic.uz account.</p>
           </div>
@@ -692,7 +692,7 @@ class NotificationService {
             <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <p><strong>Date and Time:</strong> ${formattedDateTime}</p>
               <p><strong>Consultation Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
-              <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specialization})</p>
+              <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specializations})</p>
             </div>
             <p>You can view your appointment details and join the consultation by logging into your E-polyclinic.uz account.</p>
           </div>
@@ -779,7 +779,7 @@ class NotificationService {
             <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <p><strong>Date and Time:</strong> ${formattedDateTime}</p>
               <p><strong>Consultation Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
-              <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specialization})</p>
+              <p><strong>Doctor:</strong> Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specializations})</p>
             </div>
             <p>You can view your appointment details and join the consultation by logging into your E-polyclinic.uz account.</p>
           </div>

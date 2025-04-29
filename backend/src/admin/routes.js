@@ -85,7 +85,7 @@ router.get('/system-health', adminController.getSystemHealth);
 
 /**
  * @route POST /api/admin/specializations
- * @desc Create a new medical specialization
+ * @desc Create a new medical specializations
  * @access Private (Admin only)
  */
 router.post('/specializations', adminController.createSpecialization);
@@ -99,14 +99,14 @@ router.get('/specializations', adminController.getAllSpecializations);
 
 /**
  * @route PATCH /api/admin/specializations/:id
- * @desc Update a specialization
+ * @desc Update a specializations
  * @access Private (Admin only)
  */
 router.patch('/specializations/:id', adminController.updateSpecialization);
 
 /**
  * @route DELETE /api/admin/specializations/:id
- * @desc Delete a specialization
+ * @desc Delete a specializations
  * @access Private (Admin only)
  */
 router.delete('/specializations/:id', adminController.deleteSpecialization);

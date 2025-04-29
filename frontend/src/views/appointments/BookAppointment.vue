@@ -12,7 +12,12 @@
                     <h1 class="text-2xl font-bold text-gray-900">
                         Book Appointment with Dr. {{ doctor.firstName }} {{ doctor.lastName }}
                     </h1>
-                    <p class="mt-1 text-gray-600">{{ doctor.specialization }}</p>
+                    <div class="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
+                        <span v-for="spec in doctor.specializations" :key="spec"
+                            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            {{ spec }}
+                        </span>
+                    </div>
 
                     <form @submit.prevent="handleSubmit" class="mt-6 space-y-6">
                         <!-- Date Selection -->
@@ -62,8 +67,8 @@
                         <div class="bg-gray-50 p-4 rounded-lg">
                             <h3 class="text-lg font-medium text-gray-900">Consultation Fee</h3>
                             <p class="mt-1 text-gray-600">
-                                {{ formatCurrency(doctor.consultationFee.amount) }}
-                                {{ doctor.consultationFee.currency }}
+                                {{ formatCurrency(doctor.consultationFee) }}
+                                UZS
                             </p>
                             <p class="mt-2 text-sm text-gray-500">
                                 Payment will be processed securely via Stripe after booking.

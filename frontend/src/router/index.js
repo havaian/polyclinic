@@ -54,7 +54,7 @@ const router = createRouter({
     // Profile routes
     {
       path: '/profile',
-      name: 'profile',
+      name: 'patient-profile',
       component: () => import('@/views/profile/PatientProfile.vue'),
       meta: {
         requiresAuth: true,

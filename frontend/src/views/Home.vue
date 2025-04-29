@@ -120,7 +120,7 @@
         </div>
 
         <div class="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <div v-for="specialization in specializations" :key="specialization.id"
+          <div v-for="specializations in specializations" :key="specializations.id"
             class="bg-white overflow-hidden shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
               <div class="flex items-center">
@@ -132,11 +132,11 @@
                 </div>
                 <div class="ml-5">
                   <h3 class="text-lg leading-6 font-medium text-gray-900">
-                    {{ specialization.name }}
+                    {{ specializations.name }}
                   </h3>
                   <div class="mt-2">
                     <p class="text-sm text-gray-500">
-                      {{ specialization.doctorCount }} Doctors Available
+                      {{ specializations.doctorCount }} Doctors Available
                     </p>
                   </div>
                 </div>
@@ -144,7 +144,7 @@
             </div>
             <div class="bg-gray-50 px-4 py-4 sm:px-6">
               <div class="text-sm">
-                <router-link :to="{ name: 'doctor-list', query: { specialization: specialization.name } }"
+                <router-link :to="{ name: 'doctor-list', query: { specializations: specializations.name } }"
                   class="font-medium text-indigo-600 hover:text-indigo-500">
                   View Doctors <span aria-hidden="true">&rarr;</span>
                 </router-link>

@@ -8,7 +8,7 @@ dotenv.config();
 
 // Import models
 const User = require('./src/user/model');
-const Specialization = require('./src/specialization/model');
+const Specialization = require('./src/specializations/model');
 
 // Set longer timeout for MongoDB operations
 mongoose.set('bufferTimeoutMS', 30000);
@@ -60,12 +60,12 @@ const sampleDoctors = [
         password: 'Doctor123!',
         phone: '+998901234568',
         role: 'doctor',
-        specialization: 'Cardiology',
+        specializations: ['Cardiology'],
         licenseNumber: 'MD12345',
         experience: 15,
         bio: 'Experienced cardiologist with 15 years of practice in treating heart conditions.',
         languages: ['English', 'Russian', 'Uzbek'],
-        consultationFee: { amount: 150000, currency: 'UZS' },
+        consultationFee: 150000,
         isActive: true,
         isVerified: true,
         availability: [
@@ -85,12 +85,12 @@ const sampleDoctors = [
         password: 'Doctor123!',
         phone: '+998901234569',
         role: 'doctor',
-        specialization: 'Pediatrics',
+        specializations: ['Pediatrics'],
         licenseNumber: 'MD54321',
         experience: 10,
         bio: 'Dedicated pediatrician specializing in child development and preventive care.',
         languages: ['English', 'Uzbek'],
-        consultationFee: { amount: 120000, currency: 'UZS' },
+        consultationFee: 120000,
         isActive: true,
         isVerified: true,
         availability: [

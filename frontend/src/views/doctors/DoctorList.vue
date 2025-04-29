@@ -10,8 +10,8 @@
               @input="handleSearch" />
           </div>
           <div>
-            <label for="specialization" class="label">Specialization</label>
-            <select id="specialization" v-model="filters.specialization" class="input mt-1" @change="handleSearch">
+            <label for="specializations" class="label">Specialization</label>
+            <select id="specializations" v-model="filters.specializations" class="input mt-1" @change="handleSearch">
               <option value="">All Specializations</option>
               <option v-for="spec in specializations" :key="spec" :value="spec">
                 {{ spec }}
@@ -53,7 +53,12 @@
                     <h3 class="text-lg font-medium text-gray-900">
                       Dr. {{ doctor.firstName }} {{ doctor.lastName }}
                     </h3>
-                    <p class="text-sm text-gray-500">{{ doctor.specialization }}</p>
+                    <div class="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
+                      <span v-for="spec in doctor.specializations" :key="spec"
+                        class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                        {{ spec }}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -64,7 +69,7 @@
                   </p>
                   <p class="text-sm">
                     <span class="font-medium">Consultation Fee:</span>
-                    {{ formatCurrency(doctor.consultationFee.amount) }} {{ doctor.consultationFee.currency }}
+                    {{ formatCurrency(doctor.consultationFee) }} {{ doctor.consultationFee.currency || 'UZS' }}
                   </p>
                   <p class="text-sm">
                     <span class="font-medium">Languages:</span>
@@ -132,7 +137,7 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 const filters = reactive({
   name: '',
-  specialization: '',
+  specializations: '',
   city: ''
 })
 

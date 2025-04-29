@@ -17,8 +17,16 @@
                             <h1 class="text-2xl font-bold text-gray-900">
                                 Dr. {{ doctor.firstName }} {{ doctor.lastName }}
                             </h1>
-                            <p class="text-lg text-gray-600">{{ doctor.specialization }}</p>
+                            
+                            <!-- Specializations as tags -->
                             <div class="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
+                                <span v-for="spec in doctor.specializations" :key="spec"
+                                    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                    {{ spec }}
+                                </span>
+                            </div>
+                            
+                            <div class="mt-3 flex flex-wrap gap-2 justify-center sm:justify-start">
                                 <span
                                     class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
                                     {{ doctor.experience }} years experience
@@ -42,12 +50,25 @@
                 <div class="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                         <h2 class="text-xl font-semibold text-gray-900 mb-4">About</h2>
-                        <p class="text-gray-600">{{ doctor.bio || 'No bio provided.' }}</p>
+                        <p class="text-gray-600">{{ decodedBio }}</p>
 
                         <h3 class="text-lg font-semibold text-gray-900 mt-6 mb-2">Education</h3>
                         <ul class="space-y-2">
                             <li v-for="edu in doctor.education" :key="edu.degree" class="text-gray-600">
                                 {{ edu.degree }} - {{ edu.institution }} ({{ edu.year }})
+                            </li>
+                            <li v-if="!doctor.education || doctor.education.length === 0" class="text-gray-500">
+                                No education information provided.
+                            </li>
+                        </ul>
+
+                        <h3 class="text-lg font-semibold text-gray-900 mt-6 mb-2">Certification</h3>
+                        <ul class="space-y-2">
+                            <li v-for="cert in doctor.certifications" :key="cert.issuer" class="text-gray-600">
+                                {{ cert.issuer }} - {{ cert.name }} ({{ cert.year }})
+                            </li>
+                            <li v-if="!doctor.certifications || doctor.certifications.length === 0" class="text-gray-500">
+                                No certification information provided.
                             </li>
                         </ul>
                     </div>
@@ -58,8 +79,7 @@
                             <div>
                                 <h3 class="font-medium text-gray-900">Fee</h3>
                                 <p class="text-gray-600">
-                                    {{ formatCurrency(doctor.consultationFee.amount) }}
-                                    {{ doctor.consultationFee.currency }}
+                                    {{ formatConsultationFee }}
                                 </p>
                             </div>
 
@@ -69,13 +89,16 @@
                                     <li v-for="day in availableDays" :key="day.dayOfWeek" class="text-gray-600">
                                         {{ formatDay(day.dayOfWeek) }}: {{ day.startTime }} - {{ day.endTime }}
                                     </li>
+                                    <li v-if="availableDays.length === 0" class="text-gray-500">
+                                        No availability information provided.
+                                    </li>
                                 </ul>
                             </div>
 
                             <div>
                                 <h3 class="font-medium text-gray-900">Location</h3>
                                 <p class="text-gray-600">
-                                    {{ formatAddress(doctor.address) }}
+                                    {{ formattedAddress }}
                                 </p>
                             </div>
                         </div>
@@ -94,8 +117,12 @@
                             <div class="flex items-start">
                                 <div class="flex-1">
                                     <div class="flex items-center">
-                                        <span class="text-yellow-400">★</span>
-                                        <span class="ml-1 text-sm text-gray-600">{{ review.rating }}/5</span>
+                                        <div class="flex">
+                                            <span v-for="i in 5" :key="i" 
+                                                :class="i <= review.rating ? 'text-yellow-400' : 'text-gray-300'"
+                                                class="text-lg">★</span>
+                                        </div>
+                                        <span class="ml-2 text-sm text-gray-600">{{ review.rating }}/5</span>
                                     </div>
                                     <p class="mt-1 text-gray-900">{{ review.comment }}</p>
                                     <p class="mt-1 text-sm text-gray-500">
@@ -144,22 +171,57 @@ const availableDays = computed(() => {
     return doctor.value.availability.filter(day => day.isAvailable)
 })
 
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('uz-UZ').format(amount)
-}
+// Computed property for decoded bio
+const decodedBio = computed(() => {
+    if (!doctor.value?.bio) return 'No bio provided.'
+    
+    // Create a temporary DOM element to decode HTML entities
+    const textarea = document.createElement('textarea')
+    textarea.innerHTML = doctor.value.bio
+    return textarea.value
+})
+
+// Computed property for formatted consultation fee
+const formatConsultationFee = computed(() => {
+    const fee = doctor.value?.consultationFee
+    
+    if (!fee) return 'Consultation fee not specified'
+    
+    // If fee is an object with amount property
+    if (typeof fee === 'object' && fee !== null && 'amount' in fee) {
+        return `${new Intl.NumberFormat('uz-UZ').format(fee)} ${fee.currency || 'UZS'}`
+    }
+    // If it's just a number
+    else if (typeof fee === 'number') {
+        return `${new Intl.NumberFormat('uz-UZ').format(fee)} UZS`
+    }
+    
+    return 'Consultation fee not specified'
+})
+
+// Computed property for formatted address
+const formattedAddress = computed(() => {
+    const address = doctor.value?.address
+    
+    if (!address) return 'Address not provided'
+    
+    const parts = []
+    if (address.street) parts.push(address.street)
+    if (address.city) parts.push(address.city)
+    if (address.state) parts.push(address.state)
+    if (address.zipCode) parts.push(address.zipCode)
+    if (address.country) parts.push(address.country)
+    
+    return parts.length > 0 ? parts.join(', ') : 'Address not provided'
+})
 
 const formatDay = (dayOfWeek) => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
     return days[dayOfWeek]
 }
 
-const formatAddress = (address) => {
-    if (!address) return 'Address not provided'
-    const parts = [address.street, address.city, address.state, address.zipCode]
-    return parts.filter(Boolean).join(', ')
-}
-
 const formatDate = (date) => {
+    if (!date) return ''
     return format(new Date(date), 'MMM d, yyyy')
 }
 
@@ -170,8 +232,13 @@ async function fetchDoctorProfile() {
         doctor.value = response.data.doctor
 
         // Fetch reviews
-        const reviewsResponse = await axios.get(`/api/reviews/doctor/${route.params.id}`)
-        reviews.value = reviewsResponse.data.reviews
+        try {
+            const reviewsResponse = await axios.get(`/api/reviews/doctor/${route.params.id}`)
+            reviews.value = reviewsResponse.data.reviews
+        } catch (reviewError) {
+            console.error('Error fetching reviews:', reviewError)
+            reviews.value = []
+        }
     } catch (error) {
         console.error('Error fetching doctor profile:', error)
     } finally {

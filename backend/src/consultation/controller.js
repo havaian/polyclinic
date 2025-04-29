@@ -30,7 +30,7 @@ class ConsultationController {
 
             // Find appointment
             const appointment = await Appointment.findById(appointmentId)
-                .populate('doctor', 'firstName lastName profilePicture specialization')
+                .populate('doctor', 'firstName lastName profilePicture specializations')
                 .populate('patient', 'firstName lastName profilePicture dateOfBirth');
 
             if (!appointment) {
@@ -84,7 +84,7 @@ class ConsultationController {
                         id: appointment.doctor._id,
                         name: `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}`,
                         profilePicture: appointment.doctor.profilePicture,
-                        specialization: appointment.doctor.specialization
+                        specializations: appointment.doctor.specializations
                     },
                     patient: {
                         id: appointment.patient._id,

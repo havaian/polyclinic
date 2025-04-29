@@ -66,34 +66,29 @@
                         <input id="password" v-model="formData.password" type="password" required class="input mt-1" />
                     </div>
 
-                    <!-- Date of Birth - For both patient and doctor -->
-                    <div>
-                        <label for="dateOfBirth" class="label">Date of Birth</label>
-                        <input id="dateOfBirth" v-model="formData.dateOfBirth" type="date" required class="input mt-1"
-                            :max="maxDate" />
-                    </div>
-
-                    <!-- Gender - For both patient and doctor -->
-                    <div>
-                        <label for="gender" class="label">Gender</label>
-                        <select id="gender" v-model="formData.gender" class="input mt-1" required>
-                            <option value="">Select gender</option>
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
-                            <option value="other">Other</option>
-                            <option value="prefer not to say">Prefer not to say</option>
-                        </select>
-                    </div>
+                    <!-- Removed: Date of Birth and Gender moved to conditional blocks -->
 
                     <template v-if="formData.role === 'doctor'">
                         <div>
-                            <label for="specialization" class="label">Specialization</label>
-                            <select id="specialization" v-model="formData.specialization" class="input mt-1" required>
-                                <option value="">Select specialization</option>
-                                <option v-for="spec in specializations" :key="spec" :value="spec">
-                                    {{ spec }}
-                                </option>
-                            </select>
+                            <label for="specializations" class="label">Specializations</label>
+                            <div class="space-y-2">
+                                <div v-for="(spec, index) in formData.specializations" :key="index" class="flex gap-2">
+                                    <select v-model="formData.specializations[index]" class="input flex-1">
+                                        <option value="">Select Specialization</option>
+                                        <option v-for="spec in availableSpecializations" :key="spec" :value="spec">
+                                            {{ spec }}
+                                        </option>
+                                    </select>
+                                    <button type="button" @click="removeSpecialization(index)"
+                                        class="px-2 py-1 text-red-600 hover:text-red-800">
+                                        Remove
+                                    </button>
+                                </div>
+                                <button type="button" @click="addSpecialization"
+                                    class="text-sm text-indigo-600 hover:text-indigo-800">
+                                    + Add Specialization
+                                </button>
+                            </div>
                         </div>
 
                         <div>
@@ -113,7 +108,32 @@
                             <input id="consultationFee" v-model.number="formData.consultationFee" type="number" min="0"
                                 required class="input mt-1" />
                         </div>
+
+                        <div>
+                            <label for="languages" class="label">Languages</label>
+                            <input id="languages" v-model="languagesInput" type="text" class="input mt-1"
+                                placeholder="English, Russian, Uzbek (comma separated)" />
+                        </div>
                     </template>
+
+                    <!-- Date of Birth - Only for patients -->
+                    <div v-if="formData.role === 'patient'">
+                        <label for="dateOfBirth" class="label">Date of Birth</label>
+                        <input id="dateOfBirth" v-model="formData.dateOfBirth" type="date" required class="input mt-1"
+                            :max="maxDate" />
+                    </div>
+
+                    <!-- Gender - Only for patients -->
+                    <div v-if="formData.role === 'patient'">
+                        <label for="gender" class="label">Gender</label>
+                        <select id="gender" v-model="formData.gender" class="input mt-1" required>
+                            <option value="">Select gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                            <option value="prefer not to say">Prefer not to say</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div>
@@ -138,27 +158,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import axios from 'axios'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const specializations = [
-    'Cardiology',
-    'Dermatology',
-    'Endocrinology',
-    'Family Medicine',
-    'Gastroenterology',
-    'Neurology',
-    'Obstetrics & Gynecology',
-    'Ophthalmology',
-    'Pediatrics',
-    'Psychiatry',
-    'Pulmonology',
-    'Urology'
-]
+const availableSpecializations = ref([])
+const languagesInput = ref('')
 
 const formData = reactive({
     role: 'patient',
@@ -169,7 +178,7 @@ const formData = reactive({
     password: '',
     dateOfBirth: '',
     gender: '',
-    specialization: '',
+    specializations: [],
     licenseNumber: '',
     experience: 0,
     consultationFee: 0
@@ -186,19 +195,85 @@ const maxDate = computed(() => {
     return date.toISOString().split('T')[0]
 })
 
-async function handleSubmit() {
-    try {
-        loading.value = true
-        error.value = ''
+// Helper functions for specializations
+const addSpecialization = () => {
+    formData.specializations.push('')
+}
 
-        await authStore.register(formData)
-        registrationSuccess.value = true
-    } catch (err) {
-        error.value = err.message || 'Failed to create account'
-    } finally {
-        loading.value = false
+const removeSpecialization = (index) => {
+    formData.specializations.splice(index, 1)
+}
+
+// Add default empty specialization when switching to doctor role
+const watchRole = () => {
+    if (formData.role === 'doctor' && formData.specializations.length === 0) {
+        formData.specializations.push('')
     }
 }
 
+async function handleSubmit() {
+    try {
+        loading.value = true;
+        error.value = '';
 
+        // Create a copy of the formData to modify before sending
+        const registrationData = { ...formData };
+
+        if (registrationData.role === 'doctor') {
+            // Make sure specializations is processed properly
+            registrationData.specializations = formData.specializations.filter(s => s !== "");
+
+            // Process languages for doctor registration
+            if (languagesInput.value) {
+                registrationData.languages = languagesInput.value.split(',').map(lang => lang.trim()).filter(Boolean);
+            } else {
+                registrationData.languages = [];
+            }
+
+            // Remove patient-only fields for doctor registration
+            delete registrationData.dateOfBirth;
+            delete registrationData.gender;
+        } else {
+            // For patient registration, remove all doctor-specific fields
+            delete registrationData.specializations;
+            delete registrationData.licenseNumber;
+            delete registrationData.experience;
+            delete registrationData.consultationFee;
+            delete registrationData.languages;
+        }
+
+        await authStore.register(registrationData);
+        registrationSuccess.value = true;
+    } catch (err) {
+        error.value = err.message || 'Failed to create account';
+    } finally {
+        loading.value = false;
+    }
+}
+
+async function fetchSpecializations() {
+    try {
+        const response = await axios.get('/api/specializations')
+        availableSpecializations.value = response.data.specializations.map(s => s.name)
+    } catch (error) {
+        console.error('Error fetching specializations:', error)
+        // Set some defaults in case API call fails
+        availableSpecializations.value = [
+            'Cardiology',
+            'Dermatology',
+            'Endocrinology',
+            'Family Medicine',
+            'Gastroenterology',
+            'Neurology',
+            'Obstetrics & Gynecology',
+            'Ophthalmology',
+            'Pediatrics',
+            'Psychiatry'
+        ]
+    }
+}
+
+onMounted(() => {
+    fetchSpecializations()
+})
 </script>

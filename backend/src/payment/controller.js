@@ -16,7 +16,7 @@ exports.createCheckoutSession = async (req, res) => {
 
         // Find appointment
         const appointment = await Appointment.findById(appointmentId)
-            .populate('doctor', 'consultationFee firstName lastName email specialization')
+            .populate('doctor', 'consultationFee firstName lastName email specializations')
             .populate('patient', 'firstName lastName email');
 
         if (!appointment) {
@@ -38,8 +38,8 @@ exports.createCheckoutSession = async (req, res) => {
         }
 
         // Get consultation fee from doctor's profile
-        const amount = appointment.doctor.consultationFee.amount;
-        const currency = appointment.doctor.consultationFee.currency || 'uzs';
+        const amount = appointment.doctor.consultationFee;
+        const currency = 'uzs';
 
         // Format appointment date for display
         const appointmentDate = new Date(appointment.dateTime).toLocaleString();
@@ -53,7 +53,7 @@ exports.createCheckoutSession = async (req, res) => {
                         currency: currency.toLowerCase(),
                         product_data: {
                             name: `Medical Consultation with Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}`,
-                            description: `${appointment.doctor.specialization} - ${appointmentDate}`
+                            description: `${appointment.doctor.specializations} - ${appointmentDate}`
                         },
                         unit_amount: amount * 100, // Stripe uses smallest currency unit
                     },
@@ -233,7 +233,7 @@ exports.verifySessionStatus = async (req, res) => {
         const payment = await Payment.findOne({ stripeSessionId: sessionId })
             .populate('appointment')
             .populate('patient', 'firstName lastName email')
-            .populate('doctor', 'firstName lastName specialization');
+            .populate('doctor', 'firstName lastName specializations');
 
         if (!payment) {
             return res.status(404).json({ message: 'Payment not found for this session' });

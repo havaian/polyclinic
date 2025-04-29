@@ -6,7 +6,8 @@ const Joi = require('joi');
  * @returns {Object} Validation result
  */
 exports.validateUserInput = (data) => {
-    const schema = Joi.object({
+    // Define base schema for common fields
+    const baseSchema = {
         firstName: Joi.string().trim().min(2).max(50).required()
             .messages({
                 'string.empty': 'First name is required',
@@ -45,28 +46,33 @@ exports.validateUserInput = (data) => {
 
         role: Joi.string().valid('patient', 'doctor').default('patient'),
 
-        // Patient specific fields
-        dateOfBirth: Joi.when('role', {
-            is: 'patient',
-            then: Joi.date().max('now').required()
-                .messages({
-                    'date.base': 'Please provide a valid date of birth',
-                    'date.max': 'Date of birth cannot be in the future',
-                    'any.required': 'Date of birth is required for patients'
-                }),
-            otherwise: Joi.date().optional()
-        }),
+        // Common optional fields
+        address: Joi.object({
+            street: Joi.string().trim().max(100).optional(),
+            city: Joi.string().trim().max(50).optional(),
+            state: Joi.string().trim().max(50).optional(),
+            zipCode: Joi.string().trim().max(20).optional(),
+            country: Joi.string().trim().max(50).optional()
+        }).optional()
+    };
 
-        gender: Joi.when('role', {
-            is: 'patient',
-            then: Joi.string().valid('male', 'female', 'other', 'prefer not to say').required()
-                .messages({
-                    'any.only': 'Gender must be one of: male, female, other, prefer not to say',
-                    'any.required': 'Gender is required for patients'
-                }),
-            otherwise: Joi.string().optional()
-        }),
+    // Define patient-specific schema
+    const patientSchema = {
+        // Patient-specific required fields
+        dateOfBirth: Joi.date().max('now').required()
+            .messages({
+                'date.base': 'Please provide a valid date of birth',
+                'date.max': 'Date of birth cannot be in the future',
+                'any.required': 'Date of birth is required for patients'
+            }),
 
+        gender: Joi.string().valid('male', 'female', 'other', 'prefer not to say').required()
+            .messages({
+                'any.only': 'Gender must be one of: male, female, other, prefer not to say',
+                'any.required': 'Gender is required for patients'
+            }),
+
+        // Patient-specific optional fields
         medicalHistory: Joi.object({
             allergies: Joi.array().items(Joi.string()),
             chronicConditions: Joi.array().items(Joi.string()),
@@ -82,38 +88,42 @@ exports.validateUserInput = (data) => {
             relationship: Joi.string().trim().min(2).max(50),
             phone: Joi.string().trim().pattern(new RegExp('^[+]?[0-9]{10,15}$'))
         }).optional(),
+    };
 
-        // Doctor specific fields
-        specialization: Joi.when('role', {
-            is: 'doctor',
-            then: Joi.string().trim().required()
-                .messages({
-                    'string.empty': 'Specialization is required for doctors'
-                }),
-            otherwise: Joi.string().optional()
-        }),
+    // Define doctor-specific schema
+    const doctorSchema = {
+        // Doctor-specific required fields
+        specializations: Joi.string().trim().required()
+            .messages({
+                'string.empty': 'Specialization is required for doctors'
+            }),
 
-        licenseNumber: Joi.when('role', {
-            is: 'doctor',
-            then: Joi.string().trim().required()
-                .messages({
-                    'string.empty': 'License number is required for doctors'
-                }),
-            otherwise: Joi.string().optional()
-        }),
+        specializations: Joi.array().items(Joi.string().trim()).min(1).required()
+            .messages({
+                'array.min': 'At least one specializations is required for doctors'
+            }),
 
-        experience: Joi.when('role', {
-            is: 'doctor',
-            then: Joi.number().integer().min(0).required()
-                .messages({
-                    'number.base': 'Experience must be a number',
-                    'number.integer': 'Experience must be an integer',
-                    'number.min': 'Experience cannot be negative',
-                    'any.required': 'Experience is required for doctors'
-                }),
-            otherwise: Joi.number().optional()
-        }),
+        licenseNumber: Joi.string().trim().required()
+            .messages({
+                'string.empty': 'License number is required for doctors'
+            }),
 
+        experience: Joi.number().integer().min(0).required()
+            .messages({
+                'number.base': 'Experience must be a number',
+                'number.integer': 'Experience must be an integer',
+                'number.min': 'Experience cannot be negative',
+                'any.required': 'Experience is required for doctors'
+            }),
+
+        consultationFee: Joi.number().positive().required()
+            .messages({
+                'number.base': 'Consultation fee must be a number',
+                'number.positive': 'Consultation fee must be positive',
+                'any.required': 'Consultation fee is required for doctors'
+            }),
+
+        // Doctor-specific optional fields
         bio: Joi.string().trim().max(500).optional()
             .messages({
                 'string.max': 'Bio cannot exceed 500 characters'
@@ -121,26 +131,43 @@ exports.validateUserInput = (data) => {
 
         languages: Joi.array().items(Joi.string().trim()).optional(),
 
-        consultationFee: Joi.when('role', {
-            is: 'doctor',
-            then: Joi.number().positive().required()
-                .messages({
-                    'number.base': 'Consultation fee must be a number',
-                    'number.positive': 'Consultation fee must be positive',
-                    'any.required': 'Consultation fee is required for doctors'
-                }),
-            otherwise: Joi.number().optional()
-        }),
+        education: Joi.array().items(
+            Joi.object({
+                degree: Joi.string().trim().required(),
+                institution: Joi.string().trim().required(),
+                year: Joi.number().integer().min(1900).max(new Date().getFullYear()).required()
+            })
+        ).optional(),
+        
+        certifications: Joi.array().items(
+            Joi.object({
+                name: Joi.string().trim().required(),
+                issuer: Joi.string().trim().required(),
+                year: Joi.number().integer().min(1900).max(new Date().getFullYear()).required()
+            })
+        ).optional(),
+        
+        availability: Joi.array().items(
+            Joi.object({
+                dayOfWeek: Joi.number().integer().min(0).max(6).required(),
+                isAvailable: Joi.boolean().required(),
+                startTime: Joi.string().optional(),
+                endTime: Joi.string().optional()
+            })
+        ).optional()
+    };
 
-        address: Joi.object({
-            street: Joi.string().trim().max(100).optional(),
-            city: Joi.string().trim().max(50).optional(),
-            state: Joi.string().trim().max(50).optional(),
-            zipCode: Joi.string().trim().max(20).optional(),
-            country: Joi.string().trim().max(50).optional()
-        }).optional()
-    });
+    // Choose schema based on role
+    let schemaToUse;
+    if (data.role === 'doctor') {
+        schemaToUse = { ...baseSchema, ...doctorSchema };
+    } else {
+        // Patient role
+        schemaToUse = { ...baseSchema, ...patientSchema };
+    }
 
+    // Create and return schema
+    const schema = Joi.object(schemaToUse);
     return schema.validate(data, { abortEarly: false });
 };
 

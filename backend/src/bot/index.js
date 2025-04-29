@@ -525,11 +525,11 @@ if (bot) {
                     }
                 } else if (user.role === 'doctor') {
                     message += `Role: Doctor\n`;
-                    message += `Specialization: ${user.specialization || 'N/A'}\n`;
+                    message += `Specialization: ${user.specializations || 'N/A'}\n`;
                     message += `Experience: ${user.experience || 0} years\n`;
                     
-                    if (user.consultationFee && user.consultationFee.amount) {
-                        message += `Consultation Fee: ${user.consultationFee.amount} ${user.consultationFee.currency || 'UZS'}\n`;
+                    if (user.consultationFee) {
+                        message += `Consultation Fee: ${user.consultationFee} 'UZS'\n`;
                     }
                 }
 
@@ -676,7 +676,7 @@ if (bot) {
                 ctx.session.step = 'appointment_specialization';
                 ctx.session.appointmentData = {};
 
-                let message = "Please select a medical specialization:\n\n";
+                let message = "Please select a medical specializations:\n\n";
                 specializations.forEach((spec, index) => {
                     message += `${index + 1}. ${spec}\n`;
                 });
@@ -715,7 +715,7 @@ if (bot) {
         }
     });
 
-    // Additional message handler for specialization selection
+    // Additional message handler for specializations selection
     // This should be added inside the main message:text handler, right before the final else block
     /* 
     else if (ctx.session.step === 'appointment_specialization') {
@@ -729,11 +729,11 @@ if (bot) {
             }
             
             const selectedSpecialization = ctx.session.specializations[selection - 1];
-            ctx.session.appointmentData.specialization = selectedSpecialization;
+            ctx.session.appointmentData.specializations = selectedSpecialization;
             
-            // Fetch doctors with this specialization
+            // Fetch doctors with this specializations
             const response = await axios.get(
-                `${process.env.API_URL}/doctors?specialization=${encodeURIComponent(selectedSpecialization)}`,
+                `${process.env.API_URL}/doctors?specializations=${encodeURIComponent(selectedSpecialization)}`,
                 {
                     headers: {
                         'Authorization': `Bearer ${ctx.session.userData.token}`
@@ -745,7 +745,7 @@ if (bot) {
             
             if (!doctors || doctors.length === 0) {
                 await ctx.reply(
-                    `No doctors available for ${selectedSpecialization}. Please select another specialization or try again later.`
+                    `No doctors available for ${selectedSpecialization}. Please select another specializations or try again later.`
                 );
                 ctx.session.step = 'idle';
                 return;
@@ -758,14 +758,14 @@ if (bot) {
             doctors.forEach((doctor, index) => {
                 message += `${index + 1}. Dr. ${doctor.firstName} ${doctor.lastName}\n`;
                 message += `   Experience: ${doctor.experience} years\n`;
-                message += `   Fee: ${doctor.consultationFee.amount} ${doctor.consultationFee.currency}\n\n`;
+                message += `   Fee: ${doctor.consultationFee} 'UZS'\n\n`;
             });
             
             message += "Reply with the number of your selection.";
             
             await ctx.reply(message);
         } catch (error) {
-            console.error('Error processing specialization selection:', error.response?.data || error.message);
+            console.error('Error processing specializations selection:', error.response?.data || error.message);
             await ctx.reply(
                 "Failed to process your selection. Please try again later or book through our website."
             );

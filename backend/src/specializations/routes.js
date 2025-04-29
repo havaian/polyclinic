@@ -11,14 +11,14 @@ router.get('/', specializationController.getActiveSpecializations);
 
 /**
  * @route GET /api/specializations/:id
- * @desc Get specialization by ID
+ * @desc Get specializations by ID
  * @access Public
  */
 router.get('/:id', specializationController.getSpecializationById);
 
 /**
  * @route GET /api/specializations/:id/doctors
- * @desc Get doctors by specialization
+ * @desc Get doctors by specializations
  * @access Public
  */
 router.get('/:id/doctors', specializationController.getDoctorsBySpecialization);

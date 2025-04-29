@@ -190,7 +190,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "specializations"]
             },
-            "description": "Create a new medical specialization"
+            "description": "Create a new medical specializations"
           },
           "response": []
         }
@@ -1137,7 +1137,7 @@
                 }
               ]
             },
-            "description": "Get a specific specialization by ID"
+            "description": "Get a specific specializations by ID"
           },
           "response": []
         },
@@ -1176,7 +1176,7 @@
                 }
               ]
             },
-            "description": "Get doctors for a specific specialization"
+            "description": "Get doctors for a specific specializations"
           },
           "response": []
         }
@@ -1382,14 +1382,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/users/doctors?specialization=Cardiology&page=1&limit=10",
+              "raw": "{{baseUrl}}/api/users/doctors?specializations=Cardiology&page=1&limit=10",
               "host": ["{{baseUrl}}"],
               "path": ["api", "users", "doctors"],
               "query": [
                 {
-                  "key": "specialization",
+                  "key": "specializations",
                   "value": "Cardiology",
-                  "description": "Filter by specialization"
+                  "description": "Filter by specializations"
                 },
                 {
                   "key": "name",

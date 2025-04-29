@@ -98,14 +98,8 @@ const userSchema = new Schema({
         endTime: String    // Format: "HH:MM"
     }],
     consultationFee: {
-        amount: {
-            type: Number,
-            required: function () { return this.role === 'doctor'; }
-        },
-        currency: {
-            type: String,
-            default: 'UZS'
-        }
+        type: Number,
+        required: function () { return this.role === 'doctor'; }
     },
     // Patient-specific fields
     medicalHistory: {
@@ -228,13 +222,13 @@ userSchema.methods.getPublicProfile = function () {
     return user;
 };
 
-// Static method to find available doctors by specialization
-userSchema.statics.findAvailableDoctors = function (specialization) {
+// Static method to find available doctors by specializations
+userSchema.statics.findAvailableDoctors = function (specializations) {
     return this.find({
         role: 'doctor',
         isActive: true,
         isVerified: true,
-        specializations: specialization || { $exists: true }
+        specializations: specializations || { $exists: true }
     }).select('-password');
 };
 

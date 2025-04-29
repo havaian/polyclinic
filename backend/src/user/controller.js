@@ -6,12 +6,30 @@ const crypto = require('crypto');
 // Register a new user (patient or doctor)
 exports.registerUser = async (req, res) => {
     try {
-        const { error } = validateUserInput(req.body);
+        // First, we need to preprocess the data to prevent validation issues with role-specific fields
+        const userData = { ...req.body };
+        
+        // If the user is a patient, explicitly remove all doctor-specific fields before validation
+        if (userData.role === 'patient' || !userData.role) {
+            delete userData.specializations;
+            delete userData.specializations;
+            delete userData.licenseNumber;
+            delete userData.experience;
+            delete userData.consultationFee;
+            delete userData.bio;
+            delete userData.languages;
+            delete userData.education;
+            delete userData.certifications;
+            delete userData.availability;
+        }
+        
+        // Now validate the processed data
+        const { error } = validateUserInput(userData);
         if (error) {
             return res.status(400).json({ message: error.details[0].message });
         }
 
-        const { email, password, firstName, lastName, phone, role } = req.body;
+        const { email, password, firstName, lastName, phone, role } = userData;
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
@@ -22,7 +40,7 @@ exports.registerUser = async (req, res) => {
         // Create verification token
         const verificationToken = crypto.randomBytes(20).toString('hex');
 
-        // Create new user
+        // Create new user with base fields
         const user = new User({
             email,
             password,
@@ -36,19 +54,20 @@ exports.registerUser = async (req, res) => {
 
         // Add role-specific fields
         if (role === 'doctor') {
-            const { specializations, licenseNumber, experience, bio, languages, consultationFee, education, certifications } = req.body;
-
-            user.specializations = specializations;
-            user.licenseNumber = licenseNumber;
-            user.experience = experience;
-            user.bio = bio ? decodeURIComponent(bio) : '';
-            user.languages = languages;
-            user.consultationFee = {
-                amount: consultationFee,
-                currency: 'UZS'
-            };
-            user.education = education || [];
-            user.certifications = certifications || [];
+            // Handle specializations (array)
+            if (userData.specializations) {
+                user.specializations = userData.specializations;
+            } else {
+                user.specializations = []; // Default empty array
+            }
+            
+            user.licenseNumber = userData.licenseNumber || '';
+            user.experience = userData.experience || 0;
+            user.bio = userData.bio ? decodeURIComponent(userData.bio) : '';
+            user.languages = userData.languages || [];
+            user.consultationFee = userData.consultationFee || 0;
+            user.education = userData.education || [];
+            user.certifications = userData.certifications || [];
 
             // Default availability (can be updated later)
             user.availability = [
@@ -61,8 +80,8 @@ exports.registerUser = async (req, res) => {
                 { dayOfWeek: 7, isAvailable: false, startTime: '00:00', endTime: '00:00' }
             ];
         }
-        else if (role === 'patient') {
-            const { dateOfBirth, gender, medicalHistory } = req.body;
+        else if (role === 'patient' || !role) {
+            const { dateOfBirth, gender, medicalHistory } = userData;
 
             user.dateOfBirth = dateOfBirth;
             user.gender = gender;
@@ -70,6 +89,17 @@ exports.registerUser = async (req, res) => {
             if (medicalHistory) {
                 user.medicalHistory = medicalHistory;
             }
+            
+            // Explicitly ensure doctor-specific fields are unset for patients
+            user.specializations = undefined;
+            user.licenseNumber = undefined;
+            user.experience = undefined;
+            user.consultationFee = undefined;
+            user.bio = undefined;
+            user.languages = undefined;
+            user.education = undefined;
+            user.certifications = undefined;
+            user.availability = undefined;
         }
 
         // Save user to database
@@ -292,6 +322,11 @@ exports.resetPassword = async (req, res) => {
         const { token } = req.params;
         const { password } = req.body;
 
+        const resetPasswordToken = crypto
+                .createHash('sha256')
+                .update(token)
+                .digest('hex');
+
         if (!password) {
             return res.status(400).json({ message: 'Please provide a new password' });
         }
@@ -302,7 +337,7 @@ exports.resetPassword = async (req, res) => {
 
         // Find user with the token and check if token is still valid
         const user = await User.findOne({
-            resetPasswordToken: token,
+            resetPasswordToken: resetPasswordToken,
             resetPasswordExpire: { $gt: Date.now() }
         });
 
@@ -328,7 +363,7 @@ exports.resetPassword = async (req, res) => {
 exports.getDoctors = async (req, res) => {
     try {
         const {
-            specialization,
+            specializations,
             name,
             city,
             availableDay,
@@ -342,8 +377,8 @@ exports.getDoctors = async (req, res) => {
         const query = { role: 'doctor', isActive: true, isVerified: true };
 
         // Apply filters
-        if (specialization) {
-            query.specializations = specialization;
+        if (specializations) {
+            query.specializations = specializations;
         }
 
         if (name) {
@@ -369,7 +404,7 @@ exports.getDoctors = async (req, res) => {
         }
 
         if (maxFee) {
-            query['consultationFee.amount'] = { $lte: parseInt(maxFee) };
+            query['consultationFee'] = { $lte: parseInt(maxFee) };
         }
 
         if (language) {

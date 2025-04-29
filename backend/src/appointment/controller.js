@@ -93,7 +93,7 @@ exports.getPatientAppointments = async (req, res) => {
             .sort({ dateTime: -1 })
             .skip(parseInt(skip))
             .limit(parseInt(limit))
-            .populate('doctor', 'firstName lastName specialization profilePicture');
+            .populate('doctor', 'firstName lastName specializations profilePicture');
 
         const total = await Appointment.countDocuments(query);
 
@@ -163,7 +163,7 @@ exports.getAppointmentById = async (req, res) => {
         const { id } = req.params;
 
         const appointment = await Appointment.findById(id)
-            .populate('doctor', 'firstName lastName specialization profilePicture email phone')
+            .populate('doctor', 'firstName lastName specializations profilePicture email phone')
             .populate('patient', 'firstName lastName profilePicture dateOfBirth email phone');
 
         if (!appointment) {

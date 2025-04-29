@@ -26,7 +26,7 @@ const assistantRoutes = require('./src/assistant/routes');
 const paymentRoutes = require('./src/payment/routes');
 const { initializeConsultationRoutes } = require('./src/consultation/routes');
 const adminRoutes = require('./src/admin/routes');
-const specializationRoutes = require('./src/specialization/routes');
+const specializationRoutes = require('./src/specializations/routes');
 
 // Initialize express app
 const app = express();
