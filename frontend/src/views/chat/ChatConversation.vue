@@ -178,7 +178,7 @@ async function sendMessage() {
         sending.value = true;
         socket.value.emit('new-message', {
             conversationId: route.params.id,
-            text
+            text: newMessage.value
         });
         const response = await axios.post('/api/chat/messages', {
             conversationId: route.params.id,
