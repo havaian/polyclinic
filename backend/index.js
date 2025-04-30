@@ -193,13 +193,15 @@ app.use('/api', limiter);
 const server = require('http').createServer(app);
 
 // Initialize Socket.io
-const io = socketIo(server, {
+const io = new socketIo(server, {
     cors: {
         origin: process.env.FRONTEND_URL,
         methods: ["GET", "POST"],
-        allowedHeaders: ["my-custom-header"],
-        credentials: true
-    }
+        credentials: true,
+        allowedHeaders: ["Authorization"]
+    },
+    path: '/socket.io/',
+    transports: ['websocket', 'polling']
 });
 
 // Initialize socket.io handlers

@@ -175,7 +175,11 @@ async function sendMessage() {
     if (!newMessage.value.trim() || sending.value) return
 
     try {
-        sending.value = true
+        sending.value = true;
+        socket.value.emit('new-message', {
+            conversationId: route.params.id,
+            text
+        });
         const response = await axios.post('/api/chat/messages', {
             conversationId: route.params.id,
             text: newMessage.value
@@ -193,33 +197,47 @@ async function sendMessage() {
 
 function initializeSocket() {
     socket.value = io(import.meta.env.VITE_API_URL, {
-        query: { token: authStore.token }
-    })
+        query: { token: authStore.token },
+        path: '/socket.io/',
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
+    });
 
-    socket.value.emit('join-conversation', route.params.id)
+    socket.value.on('connect', () => {
+        console.log('Socket connected');
+        socket.value.emit('join-conversation', route.params.id);
+    });
 
-    socket.value.on('new-message', async (message) => {
+    socket.value.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+    });
+
+    socket.value.on('new-message', (message) => {
         if (message.conversation === route.params.id) {
-            messages.value.push(message)
-            await nextTick()
-            scrollToBottom()
+            messages.value.push(message);
         }
-    })
+    });
+
+    socket.value.on('error', (error) => {
+        console.error('Socket error:', error);
+    });
 
     socket.value.on('typing', (data) => {
         if (data.userId !== authStore.user._id) {
-            isTyping.value = true
+            isTyping.value = true;
             setTimeout(() => {
-                isTyping.value = false
-            }, 3000)
+                isTyping.value = false;
+            }, 3000);
         }
-    })
+    });
 
     socket.value.on('stop-typing', (data) => {
         if (data.userId !== authStore.user._id) {
-            isTyping.value = false
+            isTyping.value = false;
         }
-    })
+    });
 }
 
 onMounted(() => {
