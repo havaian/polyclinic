@@ -477,7 +477,7 @@ function initializeSocketIO(io) {
         // Handle new message
         socket.on('new-message', async (data) => {
             try {
-                const { conversationId, text } = data;
+                const { conversationId, receiverId, text } = data;
 
                 const conversation = await Conversation.findById(conversationId);
                 if (!conversation) {
@@ -487,6 +487,7 @@ function initializeSocketIO(io) {
 
                 const message = await Message.create({
                     sender: socket.user.id,
+                    receiver: receiverId,
                     conversation: conversationId,
                     text
                 });
