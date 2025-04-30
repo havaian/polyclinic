@@ -205,6 +205,23 @@
                         </div>
                     </div>
 
+                    <!-- Doctor-patient chat -->
+                    <div class="mt-8" v-if="canStartChat">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Communication</h3>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-600 mb-4">
+                                {{ getChatButtonText }}
+                            </p>
+                            <button @click="startChat" class="btn-primary flex items-center">
+                                <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                Start Chat
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Actions -->
                     <div class="flex justify-end space-x-4">
                         <button v-if="appointment.status === 'scheduled' && authStore.isPatient"
@@ -280,6 +297,27 @@ const isWithinJoinWindow = computed(() => {
         start: subMinutes(appointmentTime, 5),
         end: addMinutes(appointmentTime, 30)
     })
+})
+
+const canStartChat = computed(() => {
+    if (!appointment.value) return false
+
+    const isParticipant = authStore.isDoctor ?
+        appointment.value.doctor._id === authStore.user._id :
+        appointment.value.patient._id === authStore.user._id
+
+    const validStatus = ['scheduled', 'completed']
+    return isParticipant && validStatus.includes(appointment.value.status)
+})
+
+const getChatButtonText = computed(() => {
+    if (!appointment.value) return ''
+
+    const otherParty = authStore.isDoctor ?
+        `${appointment.value.patient.firstName} ${appointment.value.patient.lastName}` :
+        `Dr. ${appointment.value.doctor.firstName} ${appointment.value.doctor.lastName}`
+
+    return `Chat with ${otherParty} about this appointment`
 })
 
 async function fetchAppointment() {
@@ -360,6 +398,28 @@ async function proceedToPayment(appointmentId) {
     } catch (error) {
         console.error('Error creating payment session:', error)
         alert('There was a problem processing your payment. Please try again.')
+    }
+}
+
+async function startChat() {
+    try {
+        const participantId = authStore.isDoctor ?
+            appointment.value.patient._id :
+            appointment.value.doctor._id
+
+        // Create or get existing conversation
+        const response = await axios.post('/api/chat/conversations', {
+            participantId,
+            appointmentId: appointment.value._id
+        })
+
+        // Navigate to chat
+        router.push({
+            name: 'chat-conversation',
+            params: { id: response.data.conversation._id }
+        })
+    } catch (error) {
+        console.error('Error starting chat:', error)
     }
 }
 

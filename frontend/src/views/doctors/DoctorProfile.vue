@@ -17,7 +17,7 @@
                             <h1 class="text-2xl font-bold text-gray-900">
                                 Dr. {{ doctor.firstName }} {{ doctor.lastName }}
                             </h1>
-                            
+
                             <!-- Specializations as tags -->
                             <div class="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
                                 <span v-for="spec in doctor.specializations" :key="spec"
@@ -25,7 +25,7 @@
                                     {{ spec }}
                                 </span>
                             </div>
-                            
+
                             <div class="mt-3 flex flex-wrap gap-2 justify-center sm:justify-start">
                                 <span
                                     class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
@@ -37,9 +37,21 @@
                                 </span>
                             </div>
                         </div>
+
+                        <div v-if="hasUpcomingAppointment" class="mt-4">
+                            <button @click="startChat" class="btn-secondary w-full flex items-center justify-center">
+                                <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                Chat with Doctor
+                            </button>
+                        </div>
+
                         <div class="mt-4 sm:mt-0 sm:ml-auto">
                             <router-link v-if="authStore.isPatient"
-                                :to="{ name: 'book-appointment', params: { doctorId: doctor._id } }" class="btn-primary">
+                                :to="{ name: 'book-appointment', params: { doctorId: doctor._id } }"
+                                class="btn-primary">
                                 Book Appointment
                             </router-link>
                         </div>
@@ -67,7 +79,8 @@
                             <li v-for="cert in doctor.certifications" :key="cert.issuer" class="text-gray-600">
                                 {{ cert.issuer }} - {{ cert.name }} ({{ cert.year }})
                             </li>
-                            <li v-if="!doctor.certifications || doctor.certifications.length === 0" class="text-gray-500">
+                            <li v-if="!doctor.certifications || doctor.certifications.length === 0"
+                                class="text-gray-500">
                                 No certification information provided.
                             </li>
                         </ul>
@@ -118,7 +131,7 @@
                                 <div class="flex-1">
                                     <div class="flex items-center">
                                         <div class="flex">
-                                            <span v-for="i in 5" :key="i" 
+                                            <span v-for="i in 5" :key="i"
                                                 :class="i <= review.rating ? 'text-yellow-400' : 'text-gray-300'"
                                                 class="text-lg">★</span>
                                         </div>
@@ -165,6 +178,7 @@ const authStore = useAuthStore()
 const doctor = ref(null)
 const reviews = ref([])
 const loading = ref(true)
+const hasUpcomingAppointment = ref(false)
 
 const availableDays = computed(() => {
     if (!doctor.value?.availability) return []
@@ -174,7 +188,7 @@ const availableDays = computed(() => {
 // Computed property for decoded bio
 const decodedBio = computed(() => {
     if (!doctor.value?.bio) return 'No bio provided.'
-    
+
     // Create a temporary DOM element to decode HTML entities
     const textarea = document.createElement('textarea')
     textarea.innerHTML = doctor.value.bio
@@ -184,9 +198,9 @@ const decodedBio = computed(() => {
 // Computed property for formatted consultation fee
 const formatConsultationFee = computed(() => {
     const fee = doctor.value?.consultationFee
-    
+
     if (!fee) return 'Consultation fee not specified'
-    
+
     // If fee is an object with amount property
     if (typeof fee === 'object' && fee !== null && 'amount' in fee) {
         return `${new Intl.NumberFormat('uz-UZ').format(fee)} ${fee.currency || 'UZS'}`
@@ -195,23 +209,23 @@ const formatConsultationFee = computed(() => {
     else if (typeof fee === 'number') {
         return `${new Intl.NumberFormat('uz-UZ').format(fee)} UZS`
     }
-    
+
     return 'Consultation fee not specified'
 })
 
 // Computed property for formatted address
 const formattedAddress = computed(() => {
     const address = doctor.value?.address
-    
+
     if (!address) return 'Address not provided'
-    
+
     const parts = []
     if (address.street) parts.push(address.street)
     if (address.city) parts.push(address.city)
     if (address.state) parts.push(address.state)
     if (address.zipCode) parts.push(address.zipCode)
     if (address.country) parts.push(address.country)
-    
+
     return parts.length > 0 ? parts.join(', ') : 'Address not provided'
 })
 
@@ -246,7 +260,36 @@ async function fetchDoctorProfile() {
     }
 }
 
+async function checkUpcomingAppointments() {
+    if (!authStore.isAuthenticated || !authStore.isPatient) return
+
+    try {
+        const response = await axios.get(`/api/appointments/patient/${authStore.user._id}`, {
+            params: { status: 'scheduled', doctorId: doctor.value._id }
+        })
+        hasUpcomingAppointment.value = response.data.appointments.length > 0
+    } catch (error) {
+        console.error('Error checking appointments:', error)
+    }
+}
+
+async function startChat() {
+    try {
+        const response = await axios.post('/api/chat/conversations', {
+            participantId: doctor.value._id
+        })
+
+        router.push({
+            name: 'chat-conversation',
+            params: { id: response.data.conversation._id }
+        })
+    } catch (error) {
+        console.error('Error starting chat:', error)
+    }
+}
+
 onMounted(() => {
     fetchDoctorProfile()
+    checkUpcomingAppointments()
 })
 </script>

@@ -6,7 +6,7 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <h1 class="text-xl font-bold text-gray-900">
-                            Consultation with {{ isDoctor ? consultation?.patient?.name : 'Dr. ' +
+                            Consultation with {{ consultation?.patient?.name ||
                                 consultation?.doctor?.name }}
                         </h1>
                         <span class="ml-4 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium" :class="{
