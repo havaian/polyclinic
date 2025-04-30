@@ -181,7 +181,7 @@ async function sendMessage(text) {
             receiverId: recipient.value._id,
             text: newMessage.value
         })
-        messages.value.push(response.data.message)
+        messages.value.push(newMessage.value)
         newMessage.value = ''
     } catch (error) {
         console.error('Error sending message:', error)
