@@ -8,21 +8,19 @@ const { redisClient } = require('../utils/redisClient');
  * @param {Object} io - Socket.io server instance
  */
 function initializeSocketIO(io) {
-    // Enable CORS if needed
-    io.origins((origin, callback) => {
-        // Allow connections from frontend origin
-        const allowedOrigins = [process.env.FRONTEND_URL];
-        if (allowedOrigins.indexOf(origin) === -1) {
-            return callback('Origin not allowed', false);
-        }
-        callback(null, true);
+    // Enable CORS with new configuration
+    io.engine.on("headers", (headers, req) => {
+        headers["Access-Control-Allow-Origin"] = process.env.FRONTEND_URL;
     });
 
-    // Use Redis adapter for horizontal scaling (optional)
-    // if (redisClient) {
-    //     const redisAdapter = require('socket.io-redis');
-    //     io.adapter(redisAdapter({ pubClient: redisClient, subClient: redisClient.duplicate() }));
-    // }
+    // Set CORS options
+    const corsOptions = {
+        origin: process.env.FRONTEND_URL,
+        methods: ["GET", "POST"],
+        credentials: true
+    };
+
+    io.sockets.setMaxListeners(20);
 
     // Authentication middleware
     io.use(async (socket, next) => {
