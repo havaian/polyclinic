@@ -144,6 +144,31 @@ const router = createRouter({
     },
     // Chat routes
     {
+      path: '/chat',
+      name: 'chat-inbox',
+      component: () => import('@/views/chat/ChatInbox.vue'),
+      meta: {
+        requiresAuth: true
+      }
+    },
+    {
+      path: '/chat/:id',
+      name: 'chat-conversation',
+      component: () => import('@/views/chat/ChatConversation.vue'),
+      meta: {
+        requiresAuth: true
+      }
+    },
+    {
+      path: '/chat/new/:userId',
+      name: 'chat-new',
+      component: () => import('@/views/chat/ChatConversation.vue'),
+      meta: {
+        requiresAuth: true
+      }
+    },
+    // AI Assistant chat route
+    {
       path: '/chat/assistant',
       name: 'ai-assistant',
       component: () => import('@/views/chat/AiAssistant.vue'),

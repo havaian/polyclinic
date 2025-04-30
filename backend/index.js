@@ -5,11 +5,10 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-// Temporarily disable problematic middleware
-// const mongoSanitize = require('express-mongo-sanitize');
-// const xss = require('xss-clean');
 const cookieParser = require('cookie-parser');
 const scheduleAppointmentReminders = require('./src/cron/appointmentReminders');
+const socketIo = require('socket.io');
+const initializeSocketIO = require('./src/chat/socket');
 
 // Load environment variables
 require('dotenv').config();
@@ -26,6 +25,7 @@ const paymentRoutes = require('./src/payment/routes');
 const consultationRoutes = require('./src/consultation/routes');
 const adminRoutes = require('./src/admin/routes');
 const specializationRoutes = require('./src/specializations/routes');
+const chatRoutes = require('./src/chat/routes'); // Added chat routes
 
 // Initialize express app
 const app = express();
@@ -192,6 +192,19 @@ app.use('/api', limiter);
 // Create HTTP server
 const server = require('http').createServer(app);
 
+// Initialize Socket.io
+const io = socketIo(server, {
+    cors: {
+        origin: process.env.FRONTEND_URL,
+        methods: ["GET", "POST"],
+        allowedHeaders: ["my-custom-header"],
+        credentials: true
+    }
+});
+
+// Initialize socket.io handlers
+initializeSocketIO(io);
+
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/appointments', appointmentRoutes);
@@ -201,6 +214,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/consultations', consultationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/specializations', specializationRoutes);
+app.use('/api/chat', chatRoutes); // Added chat routes
 
 // Initialize cron jobs
 scheduleAppointmentReminders();
@@ -235,8 +249,6 @@ server.listen(PORT, () => {
     console.log(`✅ ${(process.env.NODE_ENV).toUpperCase()} mode`);
 });
 
-// require("./seed");
-
 // Handle unhandled promise rejections
 process.on('unhandledRejection', err => {
     console.error('UNHANDLED REJECTION:', err);
@@ -255,4 +267,4 @@ process.on('uncaughtException', err => {
     process.exit(1);
 });
 
-module.exports = { app, server };
+module.exports = { app, server, io };
