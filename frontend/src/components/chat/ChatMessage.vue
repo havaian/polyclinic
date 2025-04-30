@@ -27,7 +27,7 @@
 <script setup>
 import { computed } from 'vue'
 import { format } from 'date-fns'
-import DOMPurify from 'dompurify'
+import sanitizeHtml from 'sanitize-html'
 import { marked } from 'marked'
 
 const props = defineProps({
@@ -51,8 +51,33 @@ const props = defineProps({
 
 const formattedMessage = computed(() => {
     if (!props.message.text) return ''
+
+    // Convert markdown to HTML
     const html = marked.parse(props.message.text)
-    return DOMPurify.sanitize(html)
+
+    // Sanitize HTML with strict options
+    const clean = sanitizeHtml(html, {
+        allowedTags: [
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 'ul', 'ol', 'li',
+            'b', 'i', 'strong', 'em', 'strike', 'code', 'hr', 'br', 'blockquote'
+        ],
+        allowedAttributes: {
+            'a': ['href', 'target', 'rel']
+        },
+        allowedSchemes: ['http', 'https', 'mailto'],
+        transformTags: {
+            'a': (tagName, attribs) => ({
+                tagName,
+                attribs: {
+                    ...attribs,
+                    target: '_blank',
+                    rel: 'noopener noreferrer'
+                }
+            })
+        }
+    })
+
+    return clean
 })
 
 const formatTime = (timestamp) => {
