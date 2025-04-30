@@ -37,7 +37,7 @@ exports.getConversations = async (req, res) => {
 exports.getConversationById = async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.user.id;
+        const userId = (req.user.id).toString();
 
         // Check if conversation exists and user is a participant
         const conversation = await Conversation.findById(id)
@@ -95,7 +95,7 @@ exports.getConversationById = async (req, res) => {
 exports.sendMessage = async (req, res) => {
     try {
         const { conversationId, text, receiverId } = req.body;
-        const userId = req.user.id;
+        const userId = (req.user.id).toString();
 
         if (!text) {
             return res.status(400).json({ message: 'Message text is required' });
@@ -252,7 +252,7 @@ exports.createConversation = async (req, res) => {
 exports.markMessagesAsRead = async (req, res) => {
     try {
         const { conversationId } = req.params;
-        const userId = req.user.id;
+        const userId = (req.user.id).toString();
 
         // Check if conversation exists and user is a participant
         const conversation = await Conversation.findById(conversationId);
@@ -289,7 +289,7 @@ exports.markMessagesAsRead = async (req, res) => {
 exports.archiveConversation = async (req, res) => {
     try {
         const { conversationId } = req.params;
-        const userId = req.user.id;
+        const userId = (req.user.id).toString();
 
         // Check if conversation exists and user is a participant
         const conversation = await Conversation.findById(conversationId);
@@ -326,7 +326,7 @@ exports.archiveConversation = async (req, res) => {
  */
 exports.getUnreadMessagesCount = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = (req.user.id).toString();
 
         // Get all conversations where the user is a participant
         const conversations = await Conversation.find({
@@ -340,7 +340,7 @@ exports.getUnreadMessagesCount = async (req, res) => {
 
         // Loop through conversations and get unread counts
         for (const conversation of conversations) {
-            const unreadCount = conversation.unreadCounts.get(userId.toString()) || 0;
+            const unreadCount = conversation.unreadCounts.get(userId) || 0;
             totalUnread += unreadCount;
             conversationCounts[conversation._id] = unreadCount;
         }
