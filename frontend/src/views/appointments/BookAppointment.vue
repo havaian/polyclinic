@@ -151,7 +151,7 @@ const minDate = computed(() => format(new Date(), 'yyyy-MM-dd'))
 const maxDate = computed(() => format(addDays(new Date(), 30), 'yyyy-MM-dd'))
 
 const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('uz-UZ').format(amount)
+    return new Intl.NumberFormat('uz-UZ').format(parseInt(amount))
 }
 
 // Keep the original format function for other date formatting needs
@@ -195,7 +195,6 @@ async function fetchDoctorProfile() {
         loading.value = true
         const response = await axios.get(`/api/users/doctors/${route.params.doctorId}`)
         doctor.value = response.data
-        console.log('Doctor data:', doctor.value)
     } catch (error) {
         console.error('Error fetching doctor profile:', error)
     } finally {
@@ -207,11 +206,7 @@ async function fetchAvailableSlots() {
     try {
         const response = await axios.get(`/api/appointments/availability/${route.params.doctorId}`, {
             params: { date: formData.date }
-        })
-        
-        // Log the raw response to help with debugging
-        console.log('Available slots response:', response.data)
-        
+        })        
         // Process the slots - don't modify the original time strings
         availableSlots.value = response.data.availableSlots.map(slot => ({
             ...slot,
@@ -275,9 +270,6 @@ async function handleSubmit() {
             type: formData.type,
             reasonForVisit: formData.reasonForVisit
         }
-
-        // Log the appointment data being sent
-        console.log('Submitting appointment data:', appointmentData)
 
         const response = await axios.post('/api/appointments', appointmentData)
 
