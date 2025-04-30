@@ -17,9 +17,10 @@
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium" :class="{
                             'bg-green-100 text-green-800': appointment.status === 'completed',
                             'bg-yellow-100 text-yellow-800': appointment.status === 'scheduled',
+                            'bg-purple-100 text-purple-800': appointment.status === 'pending-payment',
                             'bg-red-100 text-red-800': appointment.status === 'canceled' || appointment.status === 'no-show'
                         }">
-                            {{ appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1) }}
+                            {{ formatStatus(appointment.status) }}
                         </span>
                     </div>
                 </div>
@@ -85,6 +86,125 @@
                         <p class="text-gray-900">{{ appointment.reasonForVisit }}</p>
                     </div>
 
+                    <!-- Consultation Summary (only for completed appointments) -->
+                    <div v-if="appointment.status === 'completed' && appointment.consultationSummary">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Consultation Summary</h3>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-900 whitespace-pre-line">{{ appointment.consultationSummary }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Prescriptions (only for completed appointments) -->
+                    <div
+                        v-if="appointment.status === 'completed' && appointment.prescriptions && appointment.prescriptions.length > 0">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Prescriptions</h3>
+                        <div class="space-y-4">
+                            <div v-for="(prescription, index) in appointment.prescriptions" :key="index"
+                                class="bg-gray-50 p-4 rounded-lg">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-500">Medication</p>
+                                        <p class="text-gray-900">{{ prescription.medication }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-500">Dosage</p>
+                                        <p class="text-gray-900">{{ prescription.dosage }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-500">Frequency</p>
+                                        <p class="text-gray-900">{{ prescription.frequency }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-500">Duration</p>
+                                        <p class="text-gray-900">{{ prescription.duration }}</p>
+                                    </div>
+                                </div>
+                                <div v-if="prescription.instructions" class="mt-2">
+                                    <p class="text-sm font-medium text-gray-500">Instructions</p>
+                                    <p class="text-gray-900">{{ prescription.instructions }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Follow-up Information (only for completed appointments with follow-up) -->
+                    <div
+                        v-if="appointment.status === 'completed' && appointment.followUp && appointment.followUp.recommended">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Follow-up Recommendation</h3>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Recommended Date</p>
+                                    <p class="text-gray-900">{{ formatDate(appointment.followUp.date) }}</p>
+                                </div>
+                                <div v-if="appointment.followUp.notes">
+                                    <p class="text-sm font-medium text-gray-500">Notes</p>
+                                    <p class="text-gray-900">{{ appointment.followUp.notes }}</p>
+                                </div>
+                            </div>
+
+                            <div v-if="followUpAppointment" class="mt-4 p-3 bg-indigo-50 rounded-lg">
+                                <p class="text-sm font-medium text-indigo-800">
+                                    Follow-up appointment has been scheduled for
+                                    <span class="font-bold">{{ formatDateTime(followUpAppointment.dateTime) }}</span>
+                                </p>
+                                <div v-if="followUpAppointment.status === 'pending-payment'" class="mt-2">
+                                    <button @click="proceedToPayment(followUpAppointment._id)"
+                                        class="btn-primary text-sm">
+                                        Proceed to Payment
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-else-if="authStore.isPatient && appointment.followUp.recommended" class="mt-4">
+                                <button @click="findFollowUpAppointment" class="btn-primary text-sm">
+                                    View Follow-up Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Log (if available) -->
+                    <div v-if="appointment.chatLog && appointment.chatLog.length > 0">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900">Chat History</h3>
+                            <button @click="showChatLog = !showChatLog"
+                                class="text-sm text-indigo-600 hover:text-indigo-900">
+                                {{ showChatLog ? 'Hide Chat' : 'Show Chat' }}
+                            </button>
+                        </div>
+                        <div v-if="showChatLog" class="bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">
+                            <div v-for="(message, index) in appointment.chatLog" :key="index" class="mb-2">
+                                <div class="flex">
+                                    <span class="font-semibold">{{ message.sender }}:</span>
+                                    <span class="ml-2">{{ message.text }}</span>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    {{ formatChatTime(message.timestamp) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Information for Pending-Payment Appointments -->
+                    <div v-if="appointment.status === 'pending-payment'">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Payment Information</h3>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700">
+                                This appointment requires payment to be confirmed. Once payment is completed, your
+                                appointment will be scheduled.
+                            </p>
+                            <div class="mt-4">
+                                <p class="text-sm font-medium text-gray-500">Amount</p>
+                                <p class="text-gray-900">{{ formatCurrency(appointment.payment.amount) }} UZS</p>
+                            </div>
+                            <div class="mt-4">
+                                <button @click="proceedToPayment(appointment._id)" class="btn-primary">
+                                    Proceed to Payment
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Actions -->
                     <div class="flex justify-end space-x-4">
                         <button v-if="appointment.status === 'scheduled' && authStore.isPatient"
@@ -110,18 +230,40 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { usePaymentStore } from '@/stores/payment'
 import { format, parseISO, differenceInYears, isWithinInterval, subMinutes, addMinutes } from 'date-fns'
 import axios from 'axios'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const paymentStore = usePaymentStore()
 
 const appointment = ref(null)
+const followUpAppointment = ref(null)
 const loading = ref(true)
+const showChatLog = ref(false)
 
 const formatDateTime = (dateTime) => {
     return format(parseISO(dateTime), 'MMM d, yyyy h:mm a')
+}
+
+const formatDate = (date) => {
+    if (!date) return 'Not specified'
+    return format(parseISO(date), 'MMM d, yyyy')
+}
+
+const formatChatTime = (timestamp) => {
+    return format(new Date(timestamp), 'MMM d, h:mm a')
+}
+
+const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('uz-UZ').format(amount)
+}
+
+const formatStatus = (status) => {
+    if (status === 'pending-payment') return 'Pending Payment'
+    return status.charAt(0).toUpperCase() + status.slice(1)
 }
 
 const calculateAge = (dateOfBirth) => {
@@ -134,12 +276,10 @@ const isWithinJoinWindow = computed(() => {
     const appointmentTime = parseISO(appointment.value.dateTime)
     const now = new Date()
 
-    return true;
-
-    // return isWithinInterval(now, {
-    //     start: subMinutes(appointmentTime, 5),
-    //     end: addMinutes(appointmentTime, 30)
-    // })
+    return isWithinInterval(now, {
+        start: subMinutes(appointmentTime, 5),
+        end: addMinutes(appointmentTime, 30)
+    })
 })
 
 async function fetchAppointment() {
@@ -147,10 +287,36 @@ async function fetchAppointment() {
         loading.value = true
         const response = await axios.get(`/api/appointments/${route.params.id}`)
         appointment.value = response.data.appointment
+
+        // If this appointment has a follow-up recommendation, try to find the follow-up appointment
+        if (appointment.value.status === 'completed' &&
+            appointment.value.followUp &&
+            appointment.value.followUp.recommended) {
+            findFollowUpAppointment()
+        }
     } catch (error) {
         console.error('Error fetching appointment:', error)
     } finally {
         loading.value = false
+    }
+}
+
+async function findFollowUpAppointment() {
+    try {
+        // Get patient's pending-payment appointments
+        const response = await axios.get('/api/appointments/patient/pending-followups')
+
+        // Find follow-up for this appointment
+        const followUps = response.data.appointments || []
+        const followUp = followUps.find(app =>
+            app.reasonForVisit.includes(`Follow-up to appointment on`) &&
+            app.doctor._id === appointment.value.doctor._id)
+
+        if (followUp) {
+            followUpAppointment.value = followUp
+        }
+    } catch (error) {
+        console.error('Error finding follow-up appointment:', error)
     }
 }
 
@@ -178,6 +344,22 @@ async function joinConsultation() {
         }
     } catch (error) {
         console.error('Error joining consultation:', error)
+        // If consultation is not ready yet, show the time remaining
+        if (error.response && error.response.data && error.response.data.startsInMinutes) {
+            alert(`This consultation will be available in ${error.response.data.startsInMinutes} minutes.`)
+        } else {
+            alert('Unable to join consultation at this time. Please try again later.')
+        }
+    }
+}
+
+async function proceedToPayment(appointmentId) {
+    try {
+        await paymentStore.createCheckoutSession(appointmentId)
+        // Redirect handled by payment store
+    } catch (error) {
+        console.error('Error creating payment session:', error)
+        alert('There was a problem processing your payment. Please try again.')
     }
 }
 

@@ -34,6 +34,28 @@ router.post(
 );
 
 /**
+ * @route POST /api/consultations/:appointmentId/prescriptions
+ * @desc Add prescriptions to a completed appointment
+ * @access Private (Doctors only)
+ */
+router.post(
+    '/:appointmentId/prescriptions',
+    authenticateUser,
+    consultationController.addPrescriptions
+);
+
+/**
+ * @route POST /api/consultations/:appointmentId/follow-up
+ * @desc Create a follow-up appointment
+ * @access Private (Doctors only)
+ */
+router.post(
+    '/:appointmentId/follow-up',
+    authenticateUser,
+    consultationController.createFollowUp
+);
+
+/**
  * @route GET /api/consultations/:appointmentId/status
  * @desc Get consultation status
  * @access Private (Patient or Doctor involved in appointment)
@@ -42,6 +64,17 @@ router.get(
     '/:appointmentId/status',
     authenticateUser,
     consultationController.getConsultationStatus
+);
+
+/**
+ * @route POST /api/consultations/:appointmentId/chat-log
+ * @desc Save chat log from consultation
+ * @access Private (Patient or Doctor involved in appointment)
+ */
+router.post(
+    '/:appointmentId/chat-log',
+    authenticateUser,
+    consultationController.saveChatLog
 );
 
 module.exports = router;

@@ -8,14 +8,21 @@ const { authenticateUser } = require('../auth/index');
  * @desc Chat with the medical assistant
  * @access Private (uses authenticated user ID when available)
  */
-router.post('/chat', assistantController.chatWithAssistant);
+router.post('/chat', authenticateUser, assistantController.chatWithAssistant);
 
 /**
  * @route DELETE /api/assistant/conversation
  * @desc Clear conversation history with the assistant
  * @access Private (must be authenticated - uses user ID from token)
  */
-router.delete('/conversation', authenticateUser, assistantController.clearConversationHistory);
+router.delete('/history', authenticateUser, assistantController.clearConversationHistory);
+
+/**
+ * @route GET /api/assistant/history
+ * @desc Get chat history with the assistant
+ * @access Private (must be authenticated)
+ */
+router.get('/history', authenticateUser, assistantController.getChatHistory);
 
 /**
  * @route GET /api/assistant/health/:topic
@@ -30,5 +37,12 @@ router.get('/health/:topic', assistantController.getHealthInfo);
  * @access Private (uses authenticated user ID when available)
  */
 router.post('/symptoms', assistantController.checkSymptoms);
+
+/**
+ * @route POST /api/assistant/feedback
+ * @desc Submit feedback for an assistant message
+ * @access Private (must be authenticated)
+ */
+router.post('/feedback', authenticateUser, assistantController.submitFeedback);
 
 module.exports = router;

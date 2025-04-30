@@ -24,7 +24,11 @@
                         <div>
                             <label for="date" class="label">Select Date</label>
                             <input id="date" v-model="formData.date" type="date" :min="minDate" :max="maxDate"
-                                class="input mt-1" required @change="fetchAvailableSlots" />
+                                class="input mt-1" required @change="fetchAvailableSlots" 
+                                :class="{ 'border-red-500': validationErrors.date }" />
+                            <p v-if="validationErrors.date" class="mt-1 text-sm text-red-600">
+                                {{ validationErrors.date }}
+                            </p>
                         </div>
 
                         <!-- Time Slots -->
@@ -41,6 +45,9 @@
                             <p v-if="availableSlots.length === 0" class="mt-2 text-sm text-gray-500">
                                 No available slots for this date.
                             </p>
+                            <p v-if="validationErrors.time" class="mt-1 text-sm text-red-600">
+                                {{ validationErrors.time }}
+                            </p>
                         </div>
 
                         <!-- Consultation Type -->
@@ -49,18 +56,27 @@
                             <div class="mt-2 grid grid-cols-3 gap-3">
                                 <button v-for="type in consultationTypes" :key="type.value" type="button"
                                     class="btn-secondary"
-                                    :class="{ 'ring-2 ring-indigo-500': formData.type === type.value }"
+                                    :class="{ 
+                                        'ring-2 ring-indigo-500': formData.type === type.value,
+                                        'border-red-500': validationErrors.type 
+                                    }"
                                     @click="formData.type = type.value">
                                     {{ type.label }}
                                 </button>
                             </div>
+                            <p v-if="validationErrors.type" class="mt-1 text-sm text-red-600">
+                                {{ validationErrors.type }}
+                            </p>
                         </div>
 
                         <!-- Reason for Visit -->
                         <div>
                             <label for="reason" class="label">Reason for Visit</label>
                             <textarea id="reason" v-model="formData.reasonForVisit" rows="3" class="input mt-1"
-                                required></textarea>
+                                required :class="{ 'border-red-500': validationErrors.reasonForVisit }"></textarea>
+                            <p v-if="validationErrors.reasonForVisit" class="mt-1 text-sm text-red-600">
+                                {{ validationErrors.reasonForVisit }}
+                            </p>
                         </div>
 
                         <!-- Fee Information -->
@@ -76,7 +92,7 @@
                         </div>
 
                         <div>
-                            <button type="submit" class="btn-primary w-full" :disabled="!isFormValid || submitting">
+                            <button type="submit" class="btn-primary w-full" :disabled="submitting">
                                 {{ submitting ? 'Processing...' : 'Proceed to Payment' }}
                             </button>
                         </div>
@@ -111,6 +127,12 @@ const loading = ref(true)
 const submitting = ref(false)
 const error = ref('')
 const availableSlots = ref([])
+const validationErrors = reactive({
+    date: '',
+    time: '',
+    type: '',
+    reasonForVisit: ''
+})
 
 const consultationTypes = [
     { value: 'video', label: 'Video' },
@@ -140,6 +162,15 @@ const formatTime = (time) => {
     return format(parseISO(time), 'h:mm a')
 }
 
+const isWithinJoinWindow = (dateTime) => {
+    const appointmentTime = parseISO(dateTime)
+    const now = new Date()
+    return isWithinInterval(now, {
+        start: subMinutes(appointmentTime, 5),
+        end: addMinutes(appointmentTime, 30)
+    })
+}
+
 async function fetchDoctorProfile() {
     try {
         loading.value = true
@@ -159,13 +190,50 @@ async function fetchAvailableSlots() {
         })
         availableSlots.value = response.data.availableSlots
         formData.time = '' // Reset selected time when date changes
+        // Clear the time validation error when fetching new slots
+        validationErrors.time = ''
     } catch (error) {
         console.error('Error fetching available slots:', error)
         availableSlots.value = []
     }
 }
 
+function validateForm() {
+    // Reset all validation errors
+    Object.keys(validationErrors).forEach(key => {
+        validationErrors[key] = ''
+    })
+    
+    let isValid = true
+    
+    if (!formData.date) {
+        validationErrors.date = 'Please select a date'
+        isValid = false
+    }
+    
+    if (!formData.time) {
+        validationErrors.time = 'Please select a time slot'
+        isValid = false
+    }
+    
+    if (!formData.type) {
+        validationErrors.type = 'Please select a consultation type'
+        isValid = false
+    }
+    
+    if (!formData.reasonForVisit.trim()) {
+        validationErrors.reasonForVisit = 'Please provide a reason for your visit'
+        isValid = false
+    }
+    
+    return isValid
+}
+
 async function handleSubmit() {
+    if (!validateForm()) {
+        return
+    }
+    
     try {
         submitting.value = true
         error.value = ''

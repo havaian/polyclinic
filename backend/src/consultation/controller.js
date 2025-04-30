@@ -123,7 +123,7 @@ class ConsultationController {
     endConsultation = async (req, res) => {
         try {
             const { appointmentId } = req.params;
-            const { consultationSummary } = req.body;
+            const { consultationSummary, chatLog } = req.body;
 
             if (!appointmentId) {
                 return res.status(400).json({ message: 'Appointment ID is required' });
@@ -154,6 +154,11 @@ class ConsultationController {
                 appointment.consultationSummary = consultationSummary;
             }
 
+            // Save chat log if provided
+            if (chatLog && Array.isArray(chatLog) && chatLog.length > 0) {
+                appointment.chatLog = chatLog;
+            }
+
             await appointment.save();
 
             // Send completion notification
@@ -166,6 +171,148 @@ class ConsultationController {
         } catch (error) {
             console.error('Error ending consultation:', error);
             res.status(500).json({ message: 'An error occurred while ending the consultation' });
+        }
+    };
+
+    /**
+     * Add prescriptions to a completed appointment
+     * @param {Object} req - Express request object
+     * @param {Object} res - Express response object
+     */
+    addPrescriptions = async (req, res) => {
+        try {
+            const { appointmentId } = req.params;
+            const { prescriptions } = req.body;
+
+            if (!appointmentId) {
+                return res.status(400).json({ message: 'Appointment ID is required' });
+            }
+
+            if (!prescriptions || !Array.isArray(prescriptions) || prescriptions.length === 0) {
+                return res.status(400).json({ message: 'Valid prescriptions array is required' });
+            }
+
+            // Find appointment
+            const appointment = await Appointment.findById(appointmentId);
+
+            if (!appointment) {
+                return res.status(404).json({ message: 'Appointment not found' });
+            }
+
+            // Only doctor or admin can add prescriptions
+            if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+                return res.status(403).json({ message: 'Only doctors can add prescriptions' });
+            }
+
+            // Doctor must be assigned to the appointment
+            if (req.user.role === 'doctor' && appointment.doctor.toString() !== req.user.id) {
+                return res.status(403).json({ message: 'You are not the doctor for this appointment' });
+            }
+
+            // Validate prescription data
+            const validPrescriptions = prescriptions.filter(prescription => {
+                return prescription.medication && prescription.dosage && prescription.frequency && prescription.duration;
+            });
+
+            if (validPrescriptions.length === 0) {
+                return res.status(400).json({ message: 'No valid prescriptions provided' });
+            }
+
+            // Add prescriptions to appointment
+            appointment.prescriptions = validPrescriptions;
+            await appointment.save();
+
+            // Send prescription notification
+            await NotificationService.sendPrescriptionNotification(appointment);
+
+            res.status(200).json({
+                message: 'Prescriptions added successfully',
+                prescriptions: appointment.prescriptions
+            });
+        } catch (error) {
+            console.error('Error adding prescriptions:', error);
+            res.status(500).json({ message: 'An error occurred while adding prescriptions' });
+        }
+    };
+
+    /**
+     * Create a follow-up appointment
+     * @param {Object} req - Express request object
+     * @param {Object} res - Express response object
+     */
+    createFollowUp = async (req, res) => {
+        try {
+            const { appointmentId } = req.params;
+            const { followUpDate, notes } = req.body;
+
+            if (!appointmentId) {
+                return res.status(400).json({ message: 'Appointment ID is required' });
+            }
+
+            if (!followUpDate) {
+                return res.status(400).json({ message: 'Follow-up date is required' });
+            }
+
+            // Validate follow-up date (must be in the future)
+            const followUpDateObj = new Date(followUpDate);
+            const now = new Date();
+            if (followUpDateObj <= now) {
+                return res.status(400).json({ message: 'Follow-up date must be in the future' });
+            }
+
+            // Find the original appointment
+            const originalAppointment = await Appointment.findById(appointmentId)
+                .populate('doctor', 'firstName lastName consultationFee')
+                .populate('patient', 'firstName lastName');
+
+            if (!originalAppointment) {
+                return res.status(404).json({ message: 'Original appointment not found' });
+            }
+
+            // Only doctor or admin can create follow-up
+            if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+                return res.status(403).json({ message: 'Only doctors can create follow-up appointments' });
+            }
+
+            // Doctor must be assigned to the appointment
+            if (req.user.role === 'doctor' && originalAppointment.doctor._id.toString() !== req.user.id) {
+                return res.status(403).json({ message: 'You are not the doctor for this appointment' });
+            }
+
+            // Update original appointment with follow-up recommendation
+            originalAppointment.followUp = {
+                recommended: true,
+                date: followUpDateObj,
+                notes: notes || ''
+            };
+            await originalAppointment.save();
+
+            // Create new follow-up appointment with 'pending-payment' status
+            const followUpAppointment = new Appointment({
+                patient: originalAppointment.patient._id,
+                doctor: originalAppointment.doctor._id,
+                dateTime: followUpDateObj,
+                type: originalAppointment.type,
+                reasonForVisit: `Follow-up to appointment on ${new Date(originalAppointment.dateTime).toLocaleDateString()} - ${notes || 'No notes provided'}`,
+                status: 'pending-payment', // Special status for follow-ups pending payment
+                payment: {
+                    amount: originalAppointment.doctor.consultationFee,
+                    status: 'pending'
+                }
+            });
+
+            await followUpAppointment.save();
+
+            // Notify patient about follow-up
+            await NotificationService.sendFollowUpNotification(followUpAppointment);
+
+            res.status(201).json({
+                message: 'Follow-up appointment created successfully',
+                followUpAppointment
+            });
+        } catch (error) {
+            console.error('Error creating follow-up appointment:', error);
+            res.status(500).json({ message: 'An error occurred while creating follow-up appointment' });
         }
     };
 
@@ -198,6 +345,52 @@ class ConsultationController {
         } catch (error) {
             console.error('Error getting consultation status:', error);
             res.status(500).json({ message: 'An error occurred while checking consultation status' });
+        }
+    };
+
+    /**
+     * Save chat log from consultation
+     * @param {Object} req - Express request object
+     * @param {Object} res - Express response object
+     */
+    saveChatLog = async (req, res) => {
+        try {
+            const { appointmentId } = req.params;
+            const { chatLog } = req.body;
+
+            if (!appointmentId) {
+                return res.status(400).json({ message: 'Appointment ID is required' });
+            }
+
+            if (!chatLog || !Array.isArray(chatLog)) {
+                return res.status(400).json({ message: 'Valid chat log array is required' });
+            }
+
+            // Find appointment
+            const appointment = await Appointment.findById(appointmentId);
+
+            if (!appointment) {
+                return res.status(404).json({ message: 'Appointment not found' });
+            }
+
+            // Check if user is involved in the appointment
+            const isDoctor = req.user.role === 'doctor' && appointment.doctor.toString() === req.user.id;
+            const isPatient = req.user.role === 'patient' && appointment.patient.toString() === req.user.id;
+
+            if (!isDoctor && !isPatient && req.user.role !== 'admin') {
+                return res.status(403).json({ message: 'You are not authorized to save chat logs for this appointment' });
+            }
+
+            // Save chat log
+            appointment.chatLog = chatLog;
+            await appointment.save();
+
+            res.status(200).json({
+                message: 'Chat log saved successfully'
+            });
+        } catch (error) {
+            console.error('Error saving chat log:', error);
+            res.status(500).json({ message: 'An error occurred while saving chat log' });
         }
     };
 }

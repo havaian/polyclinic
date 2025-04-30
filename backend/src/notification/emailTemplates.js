@@ -1,4 +1,4 @@
-const format = require('date-fns/format');
+const { format } = require('date-fns');
 
 // Format currency amount
 const formatCurrency = (amount) => {
