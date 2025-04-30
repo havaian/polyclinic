@@ -23,7 +23,7 @@
                     <div v-for="message in messages" :key="message.id" class="flex mb-4"
                         :class="message.sender === 'user' ? 'justify-end' : 'justify-start'">
 
-                        <!-- User Avatar (only for assistant messages) -->
+                        <!-- Assistant Avatar -->
                         <div v-if="message.sender === 'assistant'" class="flex-shrink-0 mr-3">
                             <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
                                 <svg class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24"
@@ -47,7 +47,7 @@
                             </div>
                         </div>
 
-                        <!-- User Avatar (only for user messages) -->
+                        <!-- User Avatar -->
                         <div v-if="message.sender === 'user'" class="flex-shrink-0 ml-3">
                             <div
                                 class="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white">
@@ -86,7 +86,7 @@
                     <button type="submit" class="btn-primary" :disabled="loading || !newMessage.trim()">
                         <svg v-if="!loading" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                d="M12 19l9 2-9-18-9 18l9-2zm0 0v-8" />
                         </svg>
                         <svg v-else class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
                             viewBox="0 0 24 24">
@@ -166,7 +166,7 @@ import { ref, computed, nextTick, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { format } from 'date-fns'
 import axios from 'axios'
-import DOMPurify from 'dompurify'
+import sanitizeHtml from 'sanitize-html'
 import { marked } from 'marked'
 
 const authStore = useAuthStore()
@@ -200,13 +200,34 @@ const getUserInitials = () => {
     return (firstInitial + lastInitial).toUpperCase() || 'U'
 }
 
-// Format message with markdown
+// Format message with markdown and sanitize HTML
 const formatMessage = (text) => {
     if (!text) return ''
 
-    // Convert markdown to HTML and sanitize
+    // Convert markdown to HTML
     const html = marked.parse(text)
-    const clean = DOMPurify.sanitize(html)
+
+    // Sanitize HTML with strict options
+    const clean = sanitizeHtml(html, {
+        allowedTags: [
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 'ul', 'ol', 'li',
+            'b', 'i', 'strong', 'em', 'strike', 'code', 'hr', 'br', 'blockquote'
+        ],
+        allowedAttributes: {
+            'a': ['href', 'target', 'rel']
+        },
+        allowedSchemes: ['http', 'https', 'mailto'],
+        transformTags: {
+            'a': (tagName, attribs) => ({
+                tagName,
+                attribs: {
+                    ...attribs,
+                    target: '_blank',
+                    rel: 'noopener noreferrer'
+                }
+            })
+        }
+    })
 
     return clean
 }
