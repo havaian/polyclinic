@@ -211,8 +211,8 @@ async function fetchDoctorProfile() {
     try {
         loading.value = true
         const response = await axios.get(`/api/users/doctors/${route.params.doctorId}`)
-        // Directly assign the response data
-        doctor.value = response.data;
+        // Assign the doctor property from the response data
+        doctor.value = response.data.doctor;
         console.log('Doctor data loaded:', doctor.value);
         
         // Log consultation fee for debugging
