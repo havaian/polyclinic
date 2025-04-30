@@ -342,7 +342,7 @@ async function fetchAppointment() {
 async function findFollowUpAppointment() {
     try {
         // Get patient's pending-payment appointments
-        const response = await axios.get('/api/appointments/patient/pending-followups')
+        const response = await axios.get(`/api/appointments/patient/${authStore.user._id}/pending-followups`)
 
         // Find follow-up for this appointment
         const followUps = response.data.appointments || []
