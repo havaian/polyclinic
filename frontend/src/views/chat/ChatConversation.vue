@@ -182,6 +182,7 @@ async function sendMessage(text) {
             text: newMessage.value
         })
         newMessage.value = ''
+        await nextTick()
         scrollToBottom()
     } catch (error) {
         console.error('Error sending message:', error)
@@ -212,6 +213,7 @@ function initializeSocket() {
     socket.value.on('new-message', (message) => {
         if (message.conversation === route.params.id) {
             messages.value.push(message);
+            await nextTick()
             scrollToBottom()
         }
     });
