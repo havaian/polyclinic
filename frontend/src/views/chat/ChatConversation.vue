@@ -181,6 +181,8 @@ async function sendMessage(text) {
             receiverId: recipient.value._id,
             text: newMessage.value
         })
+        newMessage.value = ''
+        scrollToBottom()
     } catch (error) {
         console.error('Error sending message:', error)
     } finally {
@@ -210,6 +212,7 @@ function initializeSocket() {
     socket.value.on('new-message', (message) => {
         if (message.conversation === route.params.id) {
             messages.value.push(message);
+            scrollToBottom()
         }
     });
 
