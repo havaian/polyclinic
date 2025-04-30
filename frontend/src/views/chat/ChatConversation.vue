@@ -9,7 +9,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue' // Added nextTick
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import ChatWindow from '@/components/chat/ChatWindow.vue'
@@ -58,7 +58,10 @@ async function fetchConversation() {
         loading.value = true
         const response = await axios.get(`/api/chat/conversations/${route.params.id}`)
         conversation.value = response.data.conversation
-        messages.value = response.data.messages
+        messages.value = response.data.messages.map(msg => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp || msg.createdAt).getTime() // Ensure valid timestamp
+        }))
     } catch (error) {
         console.error('Error fetching conversation:', error)
     } finally {
@@ -73,7 +76,14 @@ async function sendMessage(text) {
             conversationId: route.params.id,
             text
         })
-        messages.value.push(response.data.message)
+
+        // Ensure timestamp is valid
+        const message = {
+            ...response.data.message,
+            timestamp: new Date(response.data.message.timestamp || response.data.message.createdAt).getTime()
+        }
+
+        messages.value.push(message)
     } catch (error) {
         console.error('Error sending message:', error)
     } finally {
@@ -90,7 +100,12 @@ function initializeSocket() {
 
     socket.value.on('new-message', (message) => {
         if (message.conversation === route.params.id) {
-            messages.value.push(message)
+            // Ensure timestamp is valid
+            const newMessage = {
+                ...message,
+                timestamp: new Date(message.timestamp || message.createdAt).getTime()
+            }
+            messages.value.push(newMessage)
         }
     })
 

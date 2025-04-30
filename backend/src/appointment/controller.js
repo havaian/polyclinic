@@ -8,7 +8,7 @@ const emailService = require('../notification/emailService.js');
 exports.createAppointment = async (req, res) => {
     try {
         const patientId = req.user.id;
-        
+
         const { doctorId, dateTime, type, reasonForVisit, notes } = req.body;
         const appointmentData = {
             doctorId,
@@ -17,13 +17,13 @@ exports.createAppointment = async (req, res) => {
             reasonForVisit,
             notes
         };
-        
+
         const { error } = validateAppointmentInput(appointmentData);
         if (error) {
             // Send failure email to patient
             const patient = await User.findById(patientId);
             const doctor = await User.findById(doctorId);
-            
+
             await emailService.sendAppointmentFailedEmail({
                 patient,
                 doctor,
@@ -31,7 +31,7 @@ exports.createAppointment = async (req, res) => {
                 type,
                 error: error.details[0].message
             });
-            
+
             return res.status(400).json({ message: error.details[0].message });
         }
 
@@ -67,7 +67,7 @@ exports.createAppointment = async (req, res) => {
                 type,
                 error: 'Doctor is not available at this time'
             });
-            
+
             return res.status(409).json({ message: 'Doctor is not available at this time' });
         }
 
@@ -209,7 +209,7 @@ exports.updateAppointmentStatus = async (req, res) => {
         const appointment = await Appointment.findById(id)
             .populate('patient')
             .populate('doctor');
-            
+
         if (!appointment) {
             return res.status(404).json({ message: 'Appointment not found' });
         }
@@ -331,6 +331,33 @@ exports.scheduleFollowUp = async (req, res) => {
     } catch (error) {
         console.error('Error scheduling follow-up:', error);
         res.status(500).json({ message: 'An error occurred while scheduling follow-up' });
+    }
+};
+
+exports.getPendingFollowUps = async (req, res) => {
+    try {
+        const { patientId } = req.params;
+
+        // Find all pending-payment follow-up appointments for the patient
+        const appointments = await Appointment.find({
+            patient: patientId,
+            status: 'pending-payment',
+            reasonForVisit: { $regex: 'Follow-up to appointment on', $options: 'i' }
+        })
+            .populate('doctor', 'firstName lastName specializations profilePicture email')
+            .sort({ dateTime: 1 });
+
+        res.status(200).json({
+            appointments,
+            pagination: {
+                total: appointments.length,
+                limit: appointments.length,
+                skip: 0
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching pending follow-ups:', error);
+        res.status(500).json({ message: 'An error occurred while fetching pending follow-ups' });
     }
 };
 

@@ -24,8 +24,21 @@ router.get(
     '/patient/:patientId',
     authenticateUser,
     authorizeRoles(['patient', 'admin']),
-    ensureOwnership('patientId'),  // This ensures the authenticated user can only access their own appointments
+    ensureOwnership('patientId'),
     appointmentController.getPatientAppointments
+);
+
+/**
+ * @route GET /api/appointments/patient/:patientId/pending-followups
+ * @desc Get pending follow-up appointments for a patient
+ * @access Private (Patient must be the owner or Admin)
+ */
+router.get(
+    '/patient/:patientId/pending-followups',
+    authenticateUser,
+    authorizeRoles(['patient', 'admin']),
+    ensureOwnership('patientId'),
+    appointmentController.getPendingFollowUps
 );
 
 /**
@@ -37,7 +50,7 @@ router.get(
     '/doctor/:doctorId',
     authenticateUser,
     authorizeRoles(['doctor', 'admin']),
-    ensureOwnership('doctorId'),  // This ensures doctors can only access their own appointments
+    ensureOwnership('doctorId'),
     appointmentController.getDoctorAppointments
 );
 
