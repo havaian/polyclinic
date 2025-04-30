@@ -20,9 +20,9 @@
 
                 <div class="flex items-center justify-between">
                     <div class="text-sm">
-                        <router-link to="/forgot-password" class="font-medium text-indigo-600 hover:text-indigo-500">
+                        <a href="#" @click.prevent="forgotPassword" class="font-medium text-indigo-600 hover:text-indigo-500">
                             Forgot your password?
-                        </router-link>
+                        </a>
                     </div>
                 </div>
 
@@ -35,9 +35,9 @@
 
             <p class="mt-2 text-center text-sm text-gray-600">
                 Don't have an account?
-                <router-link to="/register" class="font-medium text-indigo-600 hover:text-indigo-500">
+                <a href="#" @click.prevent="goToRegister" class="font-medium text-indigo-600 hover:text-indigo-500">
                     Sign up
-                </router-link>
+                </a>
             </p>
 
             <div v-if="error"
@@ -61,18 +61,34 @@ const password = ref('')
 const loading = ref(false)
 const error = ref('')
 
-async function handleSubmit() {
+async function handleSubmit(event) {
+    // Explicitly prevent default behavior as an extra precaution
+    if (event) event.preventDefault()
+    
     if (loading.value) return
 
     try {
         loading.value = true
         error.value = ''
-        await authStore.login(email.value, password.value)
-        router.push('/')
+        
+        // Wait for the login promise to resolve
+        const result = await authStore.login(email.value, password.value)
+        
+        // Only navigate after successful login
+        router.push({ path: '/' })
     } catch (err) {
+        console.error('Login error:', err)
         error.value = err.message || 'Failed to sign in'
     } finally {
         loading.value = false
     }
+}
+
+function forgotPassword() {
+    router.push('/forgot-password')
+}
+
+function goToRegister() {
+    router.push('/register')
 }
 </script>
