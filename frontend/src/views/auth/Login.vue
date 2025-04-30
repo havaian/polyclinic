@@ -40,7 +40,8 @@
                 </router-link>
             </p>
 
-            <div v-if="error" class="mt-4 text-sm text-center text-red-600">
+            <div v-if="error"
+                class="mt-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm text-center">
                 {{ error }}
             </div>
         </div>
@@ -61,6 +62,8 @@ const loading = ref(false)
 const error = ref('')
 
 async function handleSubmit() {
+    if (loading.value) return
+
     try {
         loading.value = true
         error.value = ''
