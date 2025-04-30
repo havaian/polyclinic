@@ -39,7 +39,7 @@
                                     class="btn-secondary"
                                     :class="{ 'ring-2 ring-indigo-500': formData.time === slot.start }"
                                     @click="formData.time = slot.start">
-                                    {{ formatTime(slot.start) }}
+                                    {{ formatTimeDisplay(slot.start) }}
                                 </button>
                             </div>
                             <p v-if="availableSlots.length === 0" class="mt-2 text-sm text-gray-500">
@@ -114,7 +114,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { format, addDays, parseISO } from 'date-fns'
+import { format, addDays, parseISO, subMinutes, addMinutes, isWithinInterval } from 'date-fns'
 import { usePaymentStore } from '@/stores/payment'
 import axios from 'axios'
 
@@ -150,16 +150,27 @@ const formData = reactive({
 const minDate = computed(() => format(new Date(), 'yyyy-MM-dd'))
 const maxDate = computed(() => format(addDays(new Date(), 30), 'yyyy-MM-dd'))
 
-const isFormValid = computed(() => {
-    return formData.date && formData.time && formData.type && formData.reasonForVisit
-})
-
 const formatCurrency = (amount) => {
     return new Intl.NumberFormat('uz-UZ').format(amount)
 }
 
+// Keep the original format function for other date formatting needs
 const formatTime = (time) => {
     return format(parseISO(time), 'h:mm a')
+}
+
+// Add a new function specifically for displaying time slots correctly
+const formatTimeDisplay = (timeString) => {
+    try {
+        // Parse the ISO string without applying timezone shift
+        const timeDate = parseISO(timeString)
+        
+        // Format to hours and minutes with AM/PM
+        return format(timeDate, 'h:mm a')
+    } catch (error) {
+        console.error('Error formatting time:', error)
+        return timeString // Return original string if parsing fails
+    }
 }
 
 const isWithinJoinWindow = (dateTime) => {
@@ -188,7 +199,15 @@ async function fetchAvailableSlots() {
         const response = await axios.get(`/api/appointments/availability/${route.params.doctorId}`, {
             params: { date: formData.date }
         })
-        availableSlots.value = response.data.availableSlots
+        
+        // Process the slots to ensure correct time display
+        availableSlots.value = response.data.availableSlots.map(slot => ({
+            ...slot,
+            // Store the original time string unchanged
+            // The formatting will be handled by formatTimeDisplay when rendering
+            start: slot.start
+        }))
+        
         formData.time = '' // Reset selected time when date changes
         // Clear the time validation error when fetching new slots
         validationErrors.time = ''
@@ -241,7 +260,7 @@ async function handleSubmit() {
         // Create appointment (patientId will be automatically set from auth token in backend)
         const appointmentData = {
             doctorId: route.params.doctorId,
-            dateTime: formData.time,
+            dateTime: formData.time, // Send the original time string from the backend
             type: formData.type,
             reasonForVisit: formData.reasonForVisit
         }
@@ -250,6 +269,9 @@ async function handleSubmit() {
 
         // Create checkout session and redirect to payment
         await paymentStore.createCheckoutSession(response.data.appointment._id)
+        
+        // Note: The redirect to Stripe should be handled by the payment store
+        // If it's not redirecting properly, we might need to examine the payment store
     } catch (err) {
         console.error('Error booking appointment:', err)
         error.value = err.response?.data?.message || 'Failed to book appointment'
