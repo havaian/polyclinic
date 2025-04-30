@@ -210,7 +210,7 @@ function initializeSocket() {
         console.error('Socket connection error:', error);
     });
 
-    socket.value.on('new-message', (message) => {
+    socket.value.on('new-message', async (message) => {
         if (message.conversation === route.params.id) {
             messages.value.push(message);
             await nextTick()
