@@ -193,7 +193,7 @@ app.use('/api', limiter);
 const server = require('http').createServer(app);
 
 // Initialize Socket.io
-const io = new socketIo(server, {
+const io = socketIo(server, {
     cors: {
         origin: process.env.FRONTEND_URL,
         methods: ["GET", "POST"],
