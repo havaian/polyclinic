@@ -213,13 +213,6 @@ async function fetchDoctorProfile() {
         const response = await axios.get(`/api/users/doctors/${route.params.doctorId}`)
         // Assign the doctor property from the response data
         doctor.value = response.data.doctor;
-        console.log('Doctor data loaded:', doctor.value);
-        
-        // Log consultation fee for debugging
-        if (doctor.value) {
-            console.log('Consultation fee:', doctor.value.consultationFee);
-            console.log('Formatted fee:', formatFee());
-        }
     } catch (error) {
         console.error('Error fetching doctor profile:', error)
     } finally {
