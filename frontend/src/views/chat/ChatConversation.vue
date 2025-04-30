@@ -172,15 +172,17 @@ async function fetchConversation() {
 }
 
 async function sendMessage(text) {
-    if (!text.trim() || sending.value || !recipient.value) return
+    if (!newMessage.value.trim() || sending.value || !recipient.value) return
 
     try {
         sending.value = true
         socket.value.emit('new-message', {
             conversationId: route.params.id,
             receiverId: recipient.value._id,
-            text: text
+            text: newMessage.value
         })
+        messages.value.push(response.data.message)
+        newMessage.value = ''
     } catch (error) {
         console.error('Error sending message:', error)
     } finally {
