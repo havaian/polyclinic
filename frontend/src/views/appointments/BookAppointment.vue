@@ -83,7 +83,7 @@
                         <div class="bg-gray-50 p-4 rounded-lg">
                             <h3 class="text-lg font-medium text-gray-900">Consultation Fee</h3>
                             <p class="mt-1 text-gray-600">
-                                {{ formatCurrency(doctor.consultationFee) }}
+                                {{ formatFee() }}
                                 UZS
                             </p>
                             <p class="mt-2 text-sm text-gray-500">
@@ -150,8 +150,25 @@ const formData = reactive({
 const minDate = computed(() => format(new Date(), 'yyyy-MM-dd'))
 const maxDate = computed(() => format(addDays(new Date(), 30), 'yyyy-MM-dd'))
 
+// Safe formatting function for currency
 const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('uz-UZ').format(parseInt(amount))
+    if (amount === undefined || amount === null) {
+        return '0'; // Return zero for undefined or null values
+    }
+    // Ensure amount is treated as a number
+    const numAmount = Number(amount);
+    // Check if it's a valid number
+    if (isNaN(numAmount)) {
+        console.error('Invalid fee amount:', amount);
+        return '0';
+    }
+    return new Intl.NumberFormat('uz-UZ').format(numAmount);
+}
+
+// Function to safely format the doctor's fee
+const formatFee = () => {
+    if (!doctor.value) return '0';
+    return formatCurrency(doctor.value.consultationFee);
 }
 
 // Keep the original format function for other date formatting needs
@@ -194,7 +211,15 @@ async function fetchDoctorProfile() {
     try {
         loading.value = true
         const response = await axios.get(`/api/users/doctors/${route.params.doctorId}`)
-        doctor.value = response.data
+        // Directly assign the response data
+        doctor.value = response.data;
+        console.log('Doctor data loaded:', doctor.value);
+        
+        // Log consultation fee for debugging
+        if (doctor.value) {
+            console.log('Consultation fee:', doctor.value.consultationFee);
+            console.log('Formatted fee:', formatFee());
+        }
     } catch (error) {
         console.error('Error fetching doctor profile:', error)
     } finally {
