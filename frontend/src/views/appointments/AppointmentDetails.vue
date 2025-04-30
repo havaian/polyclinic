@@ -232,6 +232,48 @@
                             @click="joinConsultation">
                             {{ authStore.isDoctor ? 'Start Consultation' : 'Join Consultation' }}
                         </button>
+                        <div v-if="showFollowUpModal"
+                            class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+                            <div class="bg-white rounded-lg overflow-hidden shadow-xl max-w-md w-full mx-4">
+                                <div class="p-6">
+                                    <h3 class="text-lg font-medium text-gray-900 mb-4">Schedule Follow-up Appointment
+                                    </h3>
+
+                                    <form @submit.prevent="createFollowUp">
+                                        <div class="space-y-4">
+                                            <div>
+                                                <label for="followUpDate"
+                                                    class="block text-sm font-medium text-gray-700">
+                                                    Follow-up Date
+                                                </label>
+                                                <input id="followUpDate" v-model="followUpDate" type="date"
+                                                    class="input mt-1" :min="minFollowUpDate" required />
+                                            </div>
+
+                                            <div>
+                                                <label for="followUpNotes"
+                                                    class="block text-sm font-medium text-gray-700">
+                                                    Notes
+                                                </label>
+                                                <textarea id="followUpNotes" v-model="followUpNotes" rows="3"
+                                                    class="input mt-1"
+                                                    placeholder="Add any notes about the follow-up appointment"></textarea>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-6 flex justify-end space-x-3">
+                                            <button type="button" class="btn-secondary"
+                                                @click="showFollowUpModal = false">
+                                                Cancel
+                                            </button>
+                                            <button type="submit" class="btn-primary" :disabled="submitting">
+                                                {{ submitting ? 'Scheduling...' : 'Schedule Follow-up' }}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -244,6 +286,7 @@
 </template>
 
 <script setup>
+import { addDays, format } from 'date-fns'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -260,6 +303,15 @@ const appointment = ref(null)
 const followUpAppointment = ref(null)
 const loading = ref(true)
 const showChatLog = ref(false)
+const showFollowUpModal = ref(false)
+const followUpDate = ref('')
+const followUpNotes = ref('')
+const submitting = ref(false)
+
+const minFollowUpDate = computed(() => {
+    const tomorrow = addDays(new Date(), 1)
+    return format(tomorrow, 'yyyy-MM-dd')
+})
 
 const formatDateTime = (dateTime) => {
     return format(parseISO(dateTime), 'MMM d, yyyy h:mm a')
@@ -420,6 +472,31 @@ async function startChat() {
         })
     } catch (error) {
         console.error('Error starting chat:', error)
+    }
+}
+
+async function createFollowUp() {
+    if (!followUpDate.value) return
+
+    try {
+        submitting.value = true
+        await axios.post(`/api/appointments/${route.params.id}/follow-up`, {
+            followUpDate: followUpDate.value,
+            notes: followUpNotes.value
+        })
+
+        // Close modal and reset form
+        showFollowUpModal.value = false
+        followUpDate.value = ''
+        followUpNotes.value = ''
+
+        // Refresh appointment data
+        await fetchAppointment()
+    } catch (error) {
+        console.error('Error creating follow-up:', error)
+        alert('Failed to schedule follow-up appointment. Please try again.')
+    } finally {
+        submitting.value = false
     }
 }
 
