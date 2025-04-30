@@ -159,14 +159,22 @@ const formatTime = (time) => {
     return format(parseISO(time), 'h:mm a')
 }
 
-// Add a new function specifically for displaying time slots correctly
+// Updated function to display UTC times correctly without timezone conversion
 const formatTimeDisplay = (timeString) => {
     try {
-        // Parse the ISO string without applying timezone shift
-        const timeDate = parseISO(timeString)
+        // Parse the ISO string
+        const timeDate = new Date(timeString)
         
-        // Format to hours and minutes with AM/PM
-        return format(timeDate, 'h:mm a')
+        // Extract hours and minutes directly from the UTC time
+        const hours = timeDate.getUTCHours()
+        const minutes = timeDate.getUTCMinutes()
+        
+        // Format manually to avoid timezone conversion
+        const period = hours >= 12 ? 'PM' : 'AM'
+        const displayHours = hours % 12 || 12 // Convert 0 to 12 for 12 AM
+        const displayMinutes = minutes.toString().padStart(2, '0')
+        
+        return `${displayHours}:${displayMinutes} ${period}`
     } catch (error) {
         console.error('Error formatting time:', error)
         return timeString // Return original string if parsing fails
@@ -186,7 +194,8 @@ async function fetchDoctorProfile() {
     try {
         loading.value = true
         const response = await axios.get(`/api/users/doctors/${route.params.doctorId}`)
-        doctor.value = response.data.doctor
+        doctor.value = response.data
+        console.log('Doctor data:', doctor.value)
     } catch (error) {
         console.error('Error fetching doctor profile:', error)
     } finally {
@@ -200,11 +209,13 @@ async function fetchAvailableSlots() {
             params: { date: formData.date }
         })
         
-        // Process the slots to ensure correct time display
+        // Log the raw response to help with debugging
+        console.log('Available slots response:', response.data)
+        
+        // Process the slots - don't modify the original time strings
         availableSlots.value = response.data.availableSlots.map(slot => ({
             ...slot,
-            // Store the original time string unchanged
-            // The formatting will be handled by formatTimeDisplay when rendering
+            // Keep the original UTC time string
             start: slot.start
         }))
         
@@ -265,13 +276,15 @@ async function handleSubmit() {
             reasonForVisit: formData.reasonForVisit
         }
 
+        // Log the appointment data being sent
+        console.log('Submitting appointment data:', appointmentData)
+
         const response = await axios.post('/api/appointments', appointmentData)
 
         // Create checkout session and redirect to payment
         await paymentStore.createCheckoutSession(response.data.appointment._id)
         
         // Note: The redirect to Stripe should be handled by the payment store
-        // If it's not redirecting properly, we might need to examine the payment store
     } catch (err) {
         console.error('Error booking appointment:', err)
         error.value = err.response?.data?.message || 'Failed to book appointment'
