@@ -9,6 +9,9 @@ RUN npm ci
 # Copy app source
 COPY . .
 
+# Set environment variables
+ENV NODE_ENV=production
+
 # Build the app
 RUN npm run build
 
