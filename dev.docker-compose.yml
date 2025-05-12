@@ -85,8 +85,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
       - RABBITMQ_URI=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:${RABBITMQ_PORT_1}
-      - FRONTEND_URL=https://e-polyclinic.uz
-      - API_URL=https://e-polyclinic.uz/api
+      - FRONTEND_URL=${PROJECT_URL}
+      - API_URL=${PROJECT_URL}/api
     env_file:
       - ./.env
     ports:
@@ -115,7 +115,7 @@ services:
     env_file:
       - ./.env
     environment:
-      - VUE_APP_API_URL=https://e-polyclinic.uz/api
+      - VUE_APP_API_URL=/api
       - VUE_APP_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
     ports:
       - "${FRONTEND_EXPOSE}:5173"
