@@ -4,6 +4,18 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const Schema = mongoose.Schema;
 
+// Time slot schema for doctor availability
+const timeSlotSchema = new Schema({
+    startTime: {
+        type: String, // Format: "HH:MM"
+        required: true
+    },
+    endTime: {
+        type: String, // Format: "HH:MM"
+        required: true
+    }
+});
+
 const userSchema = new Schema({
     firstName: {
         type: String,
@@ -92,10 +104,13 @@ const userSchema = new Schema({
         maxlength: [500, 'Bio cannot be more than 500 characters']
     },
     availability: [{
-        dayOfWeek: Number, // 1 = Monday, 7 = Sunday
+        dayOfWeek: Number, // 0 = Monday, 6 = Sunday
         isAvailable: Boolean,
+        // Legacy fields - kept for backward compatibility
         startTime: String, // Format: "HH:MM"
-        endTime: String    // Format: "HH:MM"
+        endTime: String,   // Format: "HH:MM"
+        // New field - multiple time slots per day
+        timeSlots: [timeSlotSchema]
     }],
     consultationFee: {
         type: Number,
@@ -116,6 +131,18 @@ const userSchema = new Schema({
         relationship: String,
         phone: String
     },
+    // Agreement to terms
+    termsAccepted: {
+        type: Boolean,
+        default: false
+    },
+    privacyPolicyAccepted: {
+        type: Boolean,
+        default: false
+    },
+    termsAcceptedAt: {
+        type: Date
+    },
     // Common fields
     isVerified: {
         type: Boolean,
@@ -130,9 +157,20 @@ const userSchema = new Schema({
     },
     telegramVerificationCode: String,
     telegramVerificationExpire: Date,
+    // Token and security related fields
     resetPasswordToken: String,
     resetPasswordExpire: Date,
     verificationToken: String,
+    jwtSecret: {
+        type: String,
+        default: function () {
+            return crypto.randomBytes(32).toString('hex');
+        }
+    },
+    jwtSecretCreatedAt: {
+        type: Date,
+        default: Date.now
+    },
     createdAt: {
         type: Date,
         default: Date.now
@@ -171,6 +209,14 @@ userSchema.pre('save', async function (next) {
     }
 });
 
+// Pre-save middleware to handle accepting terms
+userSchema.pre('save', function (next) {
+    if (this.isModified('termsAccepted') && this.termsAccepted) {
+        this.termsAcceptedAt = Date.now();
+    }
+    next();
+});
+
 userSchema.pre('save', function (next) {
     if (this.specializations) {
         this.specializations = [...new Set(this.specializations)];
@@ -187,9 +233,16 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 userSchema.methods.generateAuthToken = function () {
     return jwt.sign(
         { id: this._id, role: this.role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
+        this.jwtSecret || process.env.JWT_SECRET,
+        { expiresIn: '24h' } // Set token expiration to 24 hours
     );
+};
+
+// Rotate JWT secret
+userSchema.methods.rotateJwtSecret = function () {
+    this.jwtSecret = crypto.randomBytes(32).toString('hex');
+    this.jwtSecretCreatedAt = Date.now();
+    return this.save();
 };
 
 // Generate password reset token
@@ -218,6 +271,7 @@ userSchema.methods.getPublicProfile = function () {
     delete user.resetPasswordToken;
     delete user.resetPasswordExpire;
     delete user.verificationToken;
+    delete user.jwtSecret;
 
     return user;
 };

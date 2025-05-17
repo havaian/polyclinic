@@ -28,8 +28,35 @@ exports.authenticateUser = async (req, res, next) => {
             });
         }
 
-        // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // First verify with default secret to get user ID
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (defaultError) {
+            // If default fails, token may be using personal secret
+            // Find the user by ID in token
+            try {
+                // Extract payload without verification first
+                const unverifiedPayload = jwt.decode(token);
+                if (!unverifiedPayload || !unverifiedPayload.id) {
+                    throw new Error('Invalid token format');
+                }
+
+                // Get user's personal secret
+                const user = await User.findById(unverifiedPayload.id, 'jwtSecret');
+                if (!user || !user.jwtSecret) {
+                    throw new Error('User not found or no JWT secret');
+                }
+
+                // Try to verify with user's personal secret
+                decoded = jwt.verify(token, user.jwtSecret);
+            } catch (personalError) {
+                // Both verification methods failed
+                return res.status(401).json({
+                    message: 'Invalid token. Please log in again.'
+                });
+            }
+        }
 
         // Find user by id
         const user = await User.findById(decoded.id);
@@ -40,7 +67,7 @@ exports.authenticateUser = async (req, res, next) => {
             });
         }
 
-        // ADD THIS CHECK - Verify that user has confirmed their email
+        // Verify that user has confirmed their email
         if (!user.isVerified) {
             return res.status(401).json({
                 message: 'Please verify your email before accessing this resource.'
@@ -51,6 +78,25 @@ exports.authenticateUser = async (req, res, next) => {
         if (!user.isActive) {
             return res.status(401).json({
                 message: 'This account has been deactivated. Please contact support.'
+            });
+        }
+
+        // Check token expiration
+        const tokenIssuedAt = new Date((decoded.iat || 0) * 1000);
+        const tokenExpiresAt = new Date((decoded.exp || 0) * 1000);
+        const now = new Date();
+
+        // If token is expired
+        if (now >= tokenExpiresAt) {
+            return res.status(401).json({
+                message: 'Your token has expired. Please log in again.'
+            });
+        }
+
+        // If personal JWT secret was rotated after token was issued
+        if (user.jwtSecretCreatedAt && tokenIssuedAt < user.jwtSecretCreatedAt) {
+            return res.status(401).json({
+                message: 'Your session has expired due to security changes. Please log in again.'
             });
         }
 
@@ -187,6 +233,164 @@ exports.verifyTelegramWebhook = (req, res, next) => {
             message: 'An error occurred during webhook verification.'
         });
     }
+};
+
+/**
+ * Middleware to verify content for inappropriate patterns
+ * Checks for contact information sharing attempts
+ */
+exports.contentFilter = (req, res, next) => {
+    try {
+        const { text, message } = req.body;
+        
+        const contentToCheck = text || message || '';
+        
+        if (!contentToCheck) {
+            return next();
+        }
+        
+        // Patterns to detect: phone numbers, emails, telegram usernames, etc.
+        const patterns = [
+            /\+\d{10,15}/g, // Phone numbers with country code
+            /\b\d{9,11}\b/g, // Phone numbers without formatting
+            /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, // Emails
+            /\@[A-Za-z0-9_]{5,}/g, // Telegram usernames
+            /\bt\.me\/[A-Za-z0-9_]+\b/g, // Telegram links
+            /telegram\.\w+/gi, // Telegram domain references
+            /\bwhatsapp\b/gi, // WhatsApp references
+            /\bviber\b/gi, // Viber references
+            /\bsignal\b/gi, // Signal references
+            /\binstagram\b/gi, // Instagram references
+            /\bfacebook\b/gi, // Facebook references
+            /\bmessenger\b/gi // Messenger references
+        ];
+        
+        // Check if any pattern matches
+        let violation = false;
+        let matches = [];
+        
+        for (const pattern of patterns) {
+            const match = contentToCheck.match(pattern);
+            if (match) {
+                violation = true;
+                matches = [...matches, ...match];
+            }
+        }
+        
+        if (violation) {
+            // Get user from request
+            const userId = req.user?.id;
+            
+            if (!userId) {
+                return res.status(400).json({
+                    message: 'Content contains prohibited information. Please remove contact details or external communication platforms references.'
+                });
+            }
+            
+            // Log violation
+            logContentViolation(userId, matches, contentToCheck);
+            
+            // Return error
+            return res.status(400).json({
+                message: 'For your safety and privacy, sharing contact information or references to external communication platforms is not allowed. Please communicate through the platform.'
+            });
+        }
+        
+        next();
+    } catch (error) {
+        console.error('Content filter error:', error);
+        next(); // Allow the request to continue in case of filter error
+    }
+};
+
+/**
+ * Log content violation for user
+ * @param {String} userId User ID
+ * @param {Array} matches Array of matched patterns
+ * @param {String} content Original content
+ */
+async function logContentViolation(userId, matches, content) {
+    try {
+        // Get user
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            console.error('Content violation: User not found', userId);
+            return;
+        }
+        
+        // Initialize violations counter if not exists
+        if (!user.contentViolations) {
+            user.contentViolations = [];
+        }
+        
+        // Add new violation
+        user.contentViolations.push({
+            timestamp: Date.now(),
+            matches: matches,
+            contentExcerpt: content.substring(0, 100) // Store only first 100 chars
+        });
+        
+        // Apply penalties based on number of violations
+        const violationCount = user.contentViolations.length;
+        
+        if (violationCount >= 10) {
+            // Permanent ban
+            user.isActive = false;
+            user.banReason = 'Multiple content policy violations';
+        } else if (violationCount >= 5) {
+            // Temporary ban - 7 days
+            user.isSuspended = true;
+            user.suspensionEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            user.suspensionReason = 'Repeated content policy violations';
+        } else if (violationCount >= 3) {
+            // Warning
+            user.hasWarning = true;
+            user.warningMessage = 'You have violated our content policy multiple times. Further violations may result in suspension.';
+        }
+        
+        await user.save();
+        
+    } catch (error) {
+        console.error('Error logging content violation:', error);
+    }
+}
+
+/**
+ * Middleware to check if a user is a doctor and registered by admin
+ * Only admin can register doctors - rejects direct doctor registrations
+ */
+exports.preventDoctorRegistration = (req, res, next) => {
+    // If user is trying to register as a doctor
+    if (req.body.role === 'doctor') {
+        // Only allow if the request is from an admin
+        if (!req.user || req.user.role !== 'admin') {
+            return res.status(403).json({
+                message: 'Doctor registration is only available through administrators. Please contact the clinic to register as a doctor.'
+            });
+        }
+    }
+    
+    next();
+};
+
+/**
+ * Middleware to ensure terms are accepted during registration
+ */
+exports.ensureTermsAccepted = (req, res, next) => {
+    // If it's a registration request
+    if (req.path.includes('/register') && req.method === 'POST') {
+        // Check if terms and privacy policy are accepted
+        const { termsAccepted, privacyPolicyAccepted } = req.body;
+        
+        if (!termsAccepted || !privacyPolicyAccepted) {
+            return res.status(400).json({
+                message: 'You must accept the Terms of Service and Privacy Policy to register.'
+            });
+        }
+    }
+    
+    next();
 };
 
 module.exports = exports;

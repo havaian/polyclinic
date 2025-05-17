@@ -55,6 +55,17 @@ router.get(
 );
 
 /**
+ * @route GET /api/appointments/calendar
+ * @desc Get appointments in calendar format
+ * @access Private
+ */
+router.get(
+    '/calendar',
+    authenticateUser,
+    appointmentController.getCalendarAppointments
+);
+
+/**
  * @route GET /api/appointments/:id
  * @desc Get a specific appointment by ID
  * @access Private (Only involved parties or Admin)
@@ -77,6 +88,18 @@ router.patch(
 );
 
 /**
+ * @route POST /api/appointments/:id/confirm
+ * @desc Doctor confirms appointment
+ * @access Private (Doctors only - only for their appointments)
+ */
+router.post(
+    '/:id/confirm',
+    authenticateUser,
+    authorizeRoles(['doctor']),
+    appointmentController.confirmAppointment
+);
+
+/**
  * @route PATCH /api/appointments/:id/prescriptions
  * @desc Add/update prescriptions for an appointment
  * @access Private (Doctors only - only for their appointments)
@@ -86,6 +109,28 @@ router.patch(
     authenticateUser,
     authorizeRoles(['doctor']),
     appointmentController.updatePrescriptions
+);
+
+/**
+ * @route POST /api/appointments/:id/documents
+ * @desc Upload medical documents for an appointment
+ * @access Private (Patients and Doctors - only for their appointments)
+ */
+router.post(
+    '/:id/documents',
+    authenticateUser,
+    appointmentController.uploadDocument
+);
+
+/**
+ * @route GET /api/appointments/:id/documents
+ * @desc Get documents for an appointment
+ * @access Private (Only involved parties or Admin)
+ */
+router.get(
+    '/:id/documents',
+    authenticateUser,
+    appointmentController.getDocuments
 );
 
 /**
@@ -108,6 +153,19 @@ router.post(
 router.get(
     '/availability/:doctorId',
     appointmentController.getDoctorAvailability
+);
+
+/**
+ * @route GET /api/appointments/pending-confirmation/doctor/:doctorId
+ * @desc Get appointments pending doctor confirmation
+ * @access Private (Doctor must be the owner or Admin)
+ */
+router.get(
+    '/pending-confirmation/doctor/:doctorId',
+    authenticateUser,
+    authorizeRoles(['doctor', 'admin']),
+    ensureOwnership('doctorId'),
+    appointmentController.getPendingConfirmations
 );
 
 module.exports = router;
