@@ -773,3 +773,215 @@ exports.cleanupExpiredAppointments = async () => {
         console.error('Error cleaning up expired appointments:', error);
     }
 };
+
+/**
+ * Update consultation summary and add new prescriptions
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+exports.updateConsultationResults = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { consultationSummary, prescriptions, followUp } = req.body;
+        const doctorId = req.user.id;
+
+        // Find the appointment
+        const appointment = await Appointment.findById(id)
+            .populate('patient', 'firstName lastName email telegramId')
+            .populate('doctor', 'firstName lastName email telegramId');
+
+        if (!appointment) {
+            return res.status(404).json({ message: 'Appointment not found' });
+        }
+
+        // Verify doctor is assigned to this appointment
+        if (appointment.doctor._id.toString() !== doctorId) {
+            return res.status(403).json({ message: 'You are not authorized to update this consultation' });
+        }
+
+        // Verify appointment is completed
+        if (appointment.status !== 'completed') {
+            return res.status(400).json({ message: 'Can only update completed consultations' });
+        }
+
+        // Update consultation summary if provided
+        if (consultationSummary) {
+            appointment.consultationSummary = consultationSummary;
+        }
+
+        // Add new prescriptions if provided (don't replace existing ones)
+        if (prescriptions && Array.isArray(prescriptions) && prescriptions.length > 0) {
+            // Filter out invalid prescriptions
+            const validPrescriptions = prescriptions.filter(prescription => {
+                return prescription.medication && prescription.dosage && 
+                       prescription.frequency && prescription.duration;
+            });
+
+            // Add timestamp to each new prescription
+            const timestampedPrescriptions = validPrescriptions.map(prescription => ({
+                ...prescription,
+                createdAt: Date.now()
+            }));
+
+            // If appointment already has prescriptions, append new ones
+            if (appointment.prescriptions && Array.isArray(appointment.prescriptions)) {
+                appointment.prescriptions = [...appointment.prescriptions, ...timestampedPrescriptions];
+            } else {
+                appointment.prescriptions = timestampedPrescriptions;
+            }
+
+            // Send prescription notification
+            if (timestampedPrescriptions.length > 0) {
+                await NotificationService.sendPrescriptionNotification(appointment);
+            }
+        }
+
+        // Update follow-up recommendation if provided
+        if (followUp && followUp.recommended) {
+            appointment.followUp = {
+                recommended: true,
+                date: new Date(followUp.date),
+                notes: followUp.notes || ''
+            };
+
+            // If creating a follow-up appointment was requested
+            if (followUp.createAppointment) {
+                // Calculate end time
+                const followUpDateObj = new Date(followUp.date);
+                const duration = followUp.duration || 30;
+                const endTime = new Date(followUpDateObj.getTime() + duration * 60000);
+
+                // Create a new appointment for the follow-up with pending-payment status
+                const followUpAppointment = new Appointment({
+                    patient: appointment.patient._id,
+                    doctor: appointment.doctor._id,
+                    dateTime: followUpDateObj,
+                    endTime: endTime,
+                    duration: duration,
+                    type: appointment.type,
+                    reasonForVisit: `Follow-up to appointment on ${appointment.dateTime.toLocaleDateString()} - ${followUp.notes || 'No notes provided'}`,
+                    status: 'pending-payment',
+                    payment: {
+                        amount: appointment.doctor.consultationFee,
+                        status: 'pending'
+                    }
+                });
+
+                await followUpAppointment.save();
+
+                // Notify about follow-up
+                await NotificationService.sendFollowUpNotification(followUpAppointment);
+            }
+        }
+
+        // Save changes
+        await appointment.save();
+
+        res.status(200).json({
+            message: 'Consultation results updated successfully',
+            appointment
+        });
+
+    } catch (error) {
+        console.error('Error updating consultation results:', error);
+        res.status(500).json({ message: 'An error occurred while updating consultation results' });
+    }
+};
+
+/**
+ * Upload medical documents for an appointment
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+exports.uploadDocument = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        // Find appointment
+        const appointment = await Appointment.findById(id);
+
+        if (!appointment) {
+            return res.status(404).json({ message: 'Appointment not found' });
+        }
+
+        // Determine who is uploading (patient or doctor)
+        const isDoctor = req.user.role === 'doctor' && appointment.doctor.toString() === userId;
+        const isPatient = req.user.role === 'patient' && appointment.patient.toString() === userId;
+
+        if (!isDoctor && !isPatient) {
+            // Remove uploaded file if user is not authorized
+            if (req.file && req.file.path) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.status(403).json({ message: 'You are not authorized to upload documents for this appointment' });
+        }
+
+        // Add document to appointment
+        const document = {
+            name: req.file.originalname,
+            fileUrl: `/uploads/documents/${req.file.filename}`,
+            fileType: req.file.mimetype,
+            uploadedBy: isDoctor ? 'doctor' : 'patient',
+            uploadedAt: Date.now()
+        };
+
+        if (!appointment.documents) {
+            appointment.documents = [];
+        }
+
+        appointment.documents.push(document);
+        await appointment.save();
+
+        // Notify the other party about the new document
+        const recipient = isDoctor ? appointment.patient : appointment.doctor;
+        await NotificationService.sendDocumentUploadNotification(appointment, document, recipient);
+
+        res.status(201).json({
+            message: 'Document uploaded successfully',
+            document
+        });
+    } catch (error) {
+        console.error('Error uploading document:', error);
+        res.status(500).json({ message: 'An error occurred while uploading document' });
+    }
+};
+
+/**
+ * Get documents for an appointment
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+exports.getDocuments = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        // Find appointment
+        const appointment = await Appointment.findById(id);
+
+        if (!appointment) {
+            return res.status(404).json({ message: 'Appointment not found' });
+        }
+
+        // Verify user is involved in the appointment
+        const isDoctor = req.user.role === 'doctor' && appointment.doctor.toString() === userId;
+        const isPatient = req.user.role === 'patient' && appointment.patient.toString() === userId;
+
+        if (!isDoctor && !isPatient && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'You are not authorized to access documents for this appointment' });
+        }
+
+        // Return documents
+        res.status(200).json({
+            documents: appointment.documents || []
+        });
+    } catch (error) {
+        console.error('Error fetching documents:', error);
+        res.status(500).json({ message: 'An error occurred while fetching documents' });
+    }
+};

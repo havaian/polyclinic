@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser');
 const scheduleAppointmentReminders = require('./src/cron/appointmentReminders');
 const socketIo = require('socket.io');
 const initializeSocketIO = require('./src/chat/socket');
+const { handleTextEncoding } = require('./src/auth/index'); // Import text encoding middleware from existing auth module
 
 // Load environment variables
 require('dotenv').config();
@@ -61,6 +62,9 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // Cookie parser
 app.use(cookieParser());
+
+// Apply text encoding middleware
+app.use(handleTextEncoding);
 
 // Custom sanitize middleware (instead of express-mongo-sanitize)
 app.use((req, res, next) => {
@@ -243,6 +247,11 @@ app.use((err, req, res, next) => {
         message: err.message || 'Internal server error'
     });
 });
+
+const initializeCronJobs = require('./src/cron/index');
+
+// Initialize cron jobs
+initializeCronJobs();
 
 // Start server
 const PORT = process.env.PORT || 3000;

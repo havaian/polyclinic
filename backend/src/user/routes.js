@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('./controller');
-const { authenticateUser, authorizeRoles } = require('../auth');
+const { authenticateUser, authorizeRoles, preventDoctorRegistration, ensureTermsAccepted } = require('../auth');
 
 /**
  * @route POST /api/users/register
  * @desc Register a new user (patient or doctor)
  * @access Public
  */
-router.post('/register', userController.registerUser);
+router.post('/register', preventDoctorRegistration, ensureTermsAccepted, userController.registerUser);
 
 /**
  * @route GET /api/users/verify/:token

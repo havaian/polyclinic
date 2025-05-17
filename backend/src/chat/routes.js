@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const chatController = require('./controller');
-const { authenticateUser } = require('../auth');
+const { authenticateUser, restrictChatDuringCall } = require('../auth');
 
 // Apply authentication to all chat routes
 router.use(authenticateUser);
@@ -32,7 +32,7 @@ router.post('/conversations', chatController.createConversation);
  * @desc Send a message in a conversation
  * @access Private
  */
-router.post('/messages', chatController.sendMessage);
+router.post('/messages', restrictChatDuringCall, chatController.sendMessage);
 
 /**
  * @route PATCH /api/chat/conversations/:conversationId/read

@@ -71,6 +71,11 @@ class ConsultationController {
                 return res.status(400).json({ message: 'Consultation time has expired' });
             }
 
+            // Check if consultation has already ended (endTime has passed)
+            if (appointment.endTime && now > appointment.endTime) {
+                return res.status(400).json({ message: 'Consultation has already ended' });
+            }
+
             // User info for Jitsi token
             const userInfo = {
                 id: userId,
@@ -84,6 +89,35 @@ class ConsultationController {
 
             // Generate Jitsi configuration
             const jitsiConfig = JitsiUtils.getJitsiConfig(appointmentId, userInfo);
+
+            // Add custom configuration for participant limits - maximum of 2 participants
+            jitsiConfig.interfaceConfigOverwrite = {
+                ...jitsiConfig.interfaceConfigOverwrite,
+                MAXIMUM_ZOOMING_COEFFICIENT: 1.0,
+                DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
+                SHOW_JITSI_WATERMARK: false,
+                ENFORCE_NOTIFICATION_AUTO_DISMISS_TIMEOUT: 15000,
+                // Set maximum number of participants
+                MAX_PARTICIPANTS: 2,
+                // Don't allow external API manipulation to override this
+                ALLOW_MULTIPLE_AUDIO_INPUT: false,
+                HIDE_INVITE_MORE_HEADER: true,
+                DISABLE_FOCUS_INDICATOR: false,
+                DISABLE_VIDEO_BACKGROUND: false,
+                // Disable the Lobby feature (waiting room)
+                ENABLE_LOBBY: false,
+                // Disable the Breakout Rooms feature
+                ENABLE_BREAKOUT_ROOMS: false
+            };
+
+            // Add participant limits to the token's context
+            jitsiConfig.jwt = JitsiUtils.generateJitsiToken(jitsiConfig.roomName, userInfo, {
+                maxParticipants: 2,
+                allowedParticipants: [
+                    appointment.doctor._id.toString(),
+                    appointment.patient._id.toString()
+                ]
+            });
 
             // Prepare response with consultation info
             res.status(200).json({
@@ -104,6 +138,7 @@ class ConsultationController {
                         dateOfBirth: appointment.patient.dateOfBirth
                     },
                     dateTime: appointment.dateTime,
+                    endTime: appointment.endTime,
                     reasonForVisit: appointment.reasonForVisit,
                     userRole: isDoctor ? 'doctor' : 'patient',
                     jitsi: jitsiConfig

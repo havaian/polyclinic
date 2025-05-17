@@ -5,12 +5,13 @@ const jwt = require('jsonwebtoken');
  */
 class JitsiUtils {
     /**
-     * Generate a JWT token for Jitsi Meet
-     * @param {String} roomName - The room name to join
-     * @param {Object} user - User object with id, name, and role
-     * @returns {String} JWT token
-     */
-    static generateJitsiToken(roomName, user) {
+ * Generate a JWT token for Jitsi Meet
+ * @param {String} roomName - The room name to join
+ * @param {Object} user - User object with id, name, and role
+ * @param {Object} options - Additional options like participant limits
+ * @returns {String} JWT token
+ */
+    static generateJitsiToken(roomName, user, options = {}) {
         if (!process.env.JITSI_APP_ID || !process.env.JITSI_SECRET) {
             throw new Error('Jitsi configuration missing in environment variables');
         }
@@ -23,6 +24,17 @@ class JitsiUtils {
                     avatar: user.avatar || '',
                     email: user.email || '',
                     role: user.role
+                },
+                features: {
+                    livestreaming: false,
+                    recording: false,
+                    transcription: false,
+                    outbound_call: false
+                },
+                room: {
+                    regex: false,
+                    maxParticipants: options.maxParticipants || 2,
+                    allowedParticipants: options.allowedParticipants || []
                 }
             },
             aud: process.env.JITSI_APP_ID,
@@ -44,13 +56,13 @@ class JitsiUtils {
         // Create a deterministic but secure room name
         const crypto = require('crypto');
         const secret = process.env.JITSI_SECRET || 'default-secret';
-        
+
         // Create a hash of the appointment ID with the secret
         const hash = crypto
             .createHmac('sha256', secret)
             .update(appointmentId)
             .digest('hex');
-        
+
         // Use a portion of the hash to create a room name
         return `epolyclinic-${hash.substring(0, 12)}`;
     }

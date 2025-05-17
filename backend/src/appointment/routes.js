@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const appointmentController = require('./controller');
 const { authenticateUser, authorizeRoles, ensureOwnership } = require('../auth');
+// Import multer configuration for file uploads
+const upload = require('../utils/multerConfig');
 
 /**
  * @route POST /api/appointments
@@ -166,6 +168,29 @@ router.get(
     authorizeRoles(['doctor', 'admin']),
     ensureOwnership('doctorId'),
     appointmentController.getPendingConfirmations
+);
+/**
+ * @route PATCH /api/appointments/:id/consultation-results
+ * @desc Update consultation results (summary, prescriptions, follow-up)
+ * @access Private (Doctors only - only for their appointments)
+ */
+router.patch(
+    '/:id/consultation-results',
+    authenticateUser,
+    authorizeRoles(['doctor']),
+    appointmentController.updateConsultationResults
+);
+
+/**
+ * @route POST /api/appointments/:id/documents
+ * @desc Upload medical documents for an appointment
+ * @access Private (Patients and Doctors - only for their appointments)
+ */
+router.post(
+    '/:id/documents',
+    authenticateUser,
+    upload.single('document'), // Use multer middleware for file upload
+    appointmentController.uploadDocument
 );
 
 module.exports = router;

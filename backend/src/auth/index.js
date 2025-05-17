@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../user/model');
 const Appointment = require('../appointment/model');
+const { safeEncodeText, sanitizeInput } = require('../utils/textUtils');
 
 /**
  * Middleware to authenticate user based on JWT token
@@ -242,13 +243,13 @@ exports.verifyTelegramWebhook = (req, res, next) => {
 exports.contentFilter = (req, res, next) => {
     try {
         const { text, message } = req.body;
-        
+
         const contentToCheck = text || message || '';
-        
+
         if (!contentToCheck) {
             return next();
         }
-        
+
         // Patterns to detect: phone numbers, emails, telegram usernames, etc.
         const patterns = [
             /\+\d{10,15}/g, // Phone numbers with country code
@@ -264,11 +265,11 @@ exports.contentFilter = (req, res, next) => {
             /\bfacebook\b/gi, // Facebook references
             /\bmessenger\b/gi // Messenger references
         ];
-        
+
         // Check if any pattern matches
         let violation = false;
         let matches = [];
-        
+
         for (const pattern of patterns) {
             const match = contentToCheck.match(pattern);
             if (match) {
@@ -276,26 +277,26 @@ exports.contentFilter = (req, res, next) => {
                 matches = [...matches, ...match];
             }
         }
-        
+
         if (violation) {
             // Get user from request
             const userId = req.user?.id;
-            
+
             if (!userId) {
                 return res.status(400).json({
                     message: 'Content contains prohibited information. Please remove contact details or external communication platforms references.'
                 });
             }
-            
+
             // Log violation
             logContentViolation(userId, matches, contentToCheck);
-            
+
             // Return error
             return res.status(400).json({
                 message: 'For your safety and privacy, sharing contact information or references to external communication platforms is not allowed. Please communicate through the platform.'
             });
         }
-        
+
         next();
     } catch (error) {
         console.error('Content filter error:', error);
@@ -313,27 +314,27 @@ async function logContentViolation(userId, matches, content) {
     try {
         // Get user
         const user = await User.findById(userId);
-        
+
         if (!user) {
             console.error('Content violation: User not found', userId);
             return;
         }
-        
+
         // Initialize violations counter if not exists
         if (!user.contentViolations) {
             user.contentViolations = [];
         }
-        
+
         // Add new violation
         user.contentViolations.push({
             timestamp: Date.now(),
             matches: matches,
             contentExcerpt: content.substring(0, 100) // Store only first 100 chars
         });
-        
+
         // Apply penalties based on number of violations
         const violationCount = user.contentViolations.length;
-        
+
         if (violationCount >= 10) {
             // Permanent ban
             user.isActive = false;
@@ -348,9 +349,9 @@ async function logContentViolation(userId, matches, content) {
             user.hasWarning = true;
             user.warningMessage = 'You have violated our content policy multiple times. Further violations may result in suspension.';
         }
-        
+
         await user.save();
-        
+
     } catch (error) {
         console.error('Error logging content violation:', error);
     }
@@ -370,7 +371,7 @@ exports.preventDoctorRegistration = (req, res, next) => {
             });
         }
     }
-    
+
     next();
 };
 
@@ -382,14 +383,137 @@ exports.ensureTermsAccepted = (req, res, next) => {
     if (req.path.includes('/register') && req.method === 'POST') {
         // Check if terms and privacy policy are accepted
         const { termsAccepted, privacyPolicyAccepted } = req.body;
-        
+
         if (!termsAccepted || !privacyPolicyAccepted) {
             return res.status(400).json({
                 message: 'You must accept the Terms of Service and Privacy Policy to register.'
             });
         }
     }
-    
+
+    next();
+};
+
+/**
+ * Middleware to check if a user is a doctor and registered by admin
+ * Only admin can register doctors - rejects direct doctor registrations
+ */
+exports.preventDoctorRegistration = (req, res, next) => {
+    // If user is trying to register as a doctor
+    if (req.body.role === 'doctor') {
+        // Only allow if the request is from an admin
+        if (!req.user || req.user.role !== 'admin') {
+            return res.status(403).json({
+                message: 'Doctor registration is only available through administrators. Please contact the clinic to register as a doctor.'
+            });
+        }
+    }
+
+    next();
+};
+
+/**
+ * Middleware to ensure terms are accepted during registration
+ */
+exports.ensureTermsAccepted = (req, res, next) => {
+    // If it's a registration request
+    if (req.path.includes('/register') && req.method === 'POST') {
+        // Check if terms and privacy policy are accepted
+        const { termsAccepted, privacyPolicyAccepted } = req.body;
+
+        if (!termsAccepted || !privacyPolicyAccepted) {
+            return res.status(400).json({
+                message: 'You must accept the Terms of Service and Privacy Policy to register.'
+            });
+        }
+    }
+
+    next();
+};
+
+/**
+ * Middleware to restrict chat during active video/audio consultations
+ */
+exports.restrictChatDuringCall = async (req, res, next) => {
+    try {
+        // Only apply to chat message creation
+        if (req.path.includes('/messages') && req.method === 'POST') {
+            const { conversationId } = req.body;
+
+            if (!conversationId) {
+                return next();
+            }
+
+            // Get the conversation to check if it's related to an appointment
+            const Conversation = require('../chat/model').Conversation;
+            const conversation = await Conversation.findById(conversationId);
+
+            if (!conversation || !conversation.appointment) {
+                return next();
+            }
+
+            // Get the appointment to check its type and status
+            const Appointment = require('../appointment/model');
+            const appointment = await Appointment.findById(conversation.appointment);
+
+            if (!appointment) {
+                return next();
+            }
+
+            // If appointment is active and is a video or audio consultation, restrict chat
+            if (appointment.status === 'scheduled' &&
+                (appointment.type === 'video' || appointment.type === 'audio')) {
+
+                const now = new Date();
+                const appointmentTime = new Date(appointment.dateTime);
+                const appointmentEndTime = appointment.endTime ||
+                    new Date(appointmentTime.getTime() + (appointment.duration || 30) * 60000);
+
+                // Check if we're currently within the appointment time
+                if (now >= appointmentTime && now <= appointmentEndTime) {
+                    return res.status(403).json({
+                        message: 'Chat is restricted during active video or audio consultations. Please use the consultation interface for communication.'
+                    });
+                }
+            }
+        }
+
+        next();
+    } catch (error) {
+        console.error('Error in restrictChatDuringCall middleware:', error);
+        next(); // Allow the request to continue in case of error
+    }
+};
+
+/**
+ * Middleware to properly handle text encoding/decoding
+ * This prevents unicode conversion issues
+ */
+exports.handleTextEncoding = (req, res, next) => {
+    // Check if request has a body
+    if (req.body) {
+        // Process text fields that commonly have encoding issues
+        const fieldsToProcess = ['bio', 'reasonForVisit', 'consultationSummary', 'notes', 'text', 'comment'];
+
+        for (const field of fieldsToProcess) {
+            if (req.body[field] && typeof req.body[field] === 'string') {
+                // Sanitize and encode text
+                req.body[field] = safeEncodeText(sanitizeInput(req.body[field]));
+            }
+        }
+
+        // Also check nested fields in objects
+        for (const key in req.body) {
+            if (req.body[key] && typeof req.body[key] === 'object' && !Array.isArray(req.body[key])) {
+                for (const nestedField of fieldsToProcess) {
+                    if (req.body[key][nestedField] && typeof req.body[key][nestedField] === 'string') {
+                        req.body[key][nestedField] = safeEncodeText(sanitizeInput(req.body[key][nestedField]));
+                    }
+                }
+            }
+        }
+    }
+
     next();
 };
 
