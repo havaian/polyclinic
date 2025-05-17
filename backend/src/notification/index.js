@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const amqp = require('amqplib');
 const { telegramBot } = require('../bot');
 const consultationNotification = require('./consultationNotification');
+const emailService = require('./emailService');
 
 /**
  * Notification Service
@@ -1029,97 +1030,79 @@ class NotificationService {
         return documentNotification.sendDocumentUploadNotification(appointment, document, recipient);
     }
 
-    //  /**
-    //  * Send verification email
-    //  * @param {String} email - User email
-    //  * @param {String} token - Verification token
-    //  */
-    // static async sendVerificationEmail(email, token) {
-    //     return emailService.sendVerificationEmail(email, token);
-    // }
+    /**
+     * Send appointment booking confirmation
+     * @param {Object} appointment - Appointment object with populated patient and doctor
+     */
+    static async sendAppointmentBookedEmails(appointment) {
+        return emailService.sendAppointmentBookedEmails(appointment);
+    }
 
-    // /**
-    //  * Send password reset email
-    //  * @param {String} email - User email
-    //  * @param {String} token - Password reset token
-    //  */
-    // static async sendPasswordResetEmail(email, token) {
-    //     return emailService.sendPasswordResetEmail(email, token);
-    // }
+    /**
+     * Send appointment cancellation notification
+     * @param {Object} appointment - Appointment object with populated patient and doctor
+     * @param {String} cancelledBy - Who cancelled the appointment ('patient', 'doctor', 'system')
+     */
+    static async sendAppointmentCancellationNotification(appointment, cancelledBy) {
+        return emailService.sendAppointmentCancelledEmails(appointment, cancelledBy);
+    }
 
-    // /**
-    //  * Send appointment booking confirmation
-    //  * @param {Object} appointment - Appointment object with populated patient and doctor
-    //  */
-    // static async sendAppointmentBookedEmails(appointment) {
-    //     return emailService.sendAppointmentBookedEmails(appointment);
-    // }
+    /**
+     * Send appointment confirmation notification
+     * @param {Object} appointment - Appointment object with populated patient and doctor
+     */
+    static async sendAppointmentConfirmedNotification(appointment) {
+        return emailService.sendAppointmentConfirmedEmails(appointment);
+    }
 
-    // /**
-    //  * Send appointment cancellation notification
-    //  * @param {Object} appointment - Appointment object with populated patient and doctor
-    //  * @param {String} cancelledBy - Who cancelled the appointment ('patient', 'doctor', 'system')
-    //  */
-    // static async sendAppointmentCancellationNotification(appointment, cancelledBy) {
-    //     return emailService.sendAppointmentCancelledEmails(appointment, cancelledBy);
-    // }
+    /**
+     * Send payment success notification
+     * @param {String} paymentId - Payment ID
+     * @param {Object} appointment - Appointment object
+     */
+    static async sendPaymentSuccessEmail(paymentId, appointment) {
+        return emailService.sendPaymentSuccessEmail(paymentId, appointment);
+    }
 
-    // /**
-    //  * Send appointment confirmation notification
-    //  * @param {Object} appointment - Appointment object with populated patient and doctor
-    //  */
-    // static async sendAppointmentConfirmedNotification(appointment) {
-    //     return emailService.sendAppointmentConfirmedEmails(appointment);
-    // }
+    /**
+     * Send payment confirmation
+     * @param {String} paymentId - Payment ID
+     */
+    static async sendPaymentConfirmation(paymentId) {
+        return emailService.sendPaymentConfirmation(paymentId);
+    }
 
-    // /**
-    //  * Send payment success notification
-    //  * @param {String} paymentId - Payment ID
-    //  * @param {Object} appointment - Appointment object
-    //  */
-    // static async sendPaymentSuccessEmail(paymentId, appointment) {
-    //     return emailService.sendPaymentSuccessEmail(paymentId, appointment);
-    // }
+    /**
+     * Send payment refund notification
+     * @param {Object} payment - Payment object
+     */
+    static async sendPaymentRefundNotification(payment) {
+        return emailService.sendPaymentRefundNotification(payment);
+    }
 
-    // /**
-    //  * Send payment confirmation
-    //  * @param {String} paymentId - Payment ID
-    //  */
-    // static async sendPaymentConfirmation(paymentId) {
-    //     return emailService.sendPaymentConfirmation(paymentId);
-    // }
+    /**
+     * Send appointment reminder emails
+     * @param {Object} appointment - Appointment object with populated patient and doctor
+     */
+    static async sendAppointmentReminderEmails(appointment) {
+        return emailService.sendAppointmentReminderEmails(appointment);
+    }
 
-    // /**
-    //  * Send payment refund notification
-    //  * @param {Object} payment - Payment object
-    //  */
-    // static async sendPaymentRefundNotification(payment) {
-    //     return emailService.sendPaymentRefundNotification(payment);
-    // }
+    /**
+     * Send prescription notification
+     * @param {Object} appointment - Appointment object with populated patient and doctor
+     */
+    static async sendPrescriptionNotification(appointment) {
+        return emailService.sendPrescriptionNotification(appointment);
+    }
 
-    // /**
-    //  * Send appointment reminder emails
-    //  * @param {Object} appointment - Appointment object with populated patient and doctor
-    //  */
-    // static async sendAppointmentReminderEmails(appointment) {
-    //     return emailService.sendAppointmentReminderEmails(appointment);
-    // }
-
-    // /**
-    //  * Send prescription notification
-    //  * @param {Object} appointment - Appointment object with populated patient and doctor
-    //  */
-    // static async sendPrescriptionNotification(appointment) {
-    //     return emailService.sendPrescriptionNotification(appointment);
-    // }
-
-    // /**
-    //  * Send follow-up notification
-    //  * @param {Object} appointment - Appointment object with populated patient and doctor
-    //  */
-    // static async sendFollowUpNotification(appointment) {
-    //     return emailService.sendFollowUpNotification(appointment);
-    // }
+    /**
+     * Send follow-up notification
+     * @param {Object} appointment - Appointment object with populated patient and doctor
+     */
+    static async sendFollowUpNotification(appointment) {
+        return emailService.sendFollowUpNotification(appointment);
+    }
 
     /**
      * Send consultation completed notification
