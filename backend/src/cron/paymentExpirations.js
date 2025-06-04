@@ -6,6 +6,7 @@ const { NotificationService } = require('../notification');
 
 // Schedule job to run every hour to check and cancel unpaid appointments
 const schedulePaymentExpirationChecks = () => {
+    // Run every hour (at minute 0)
     cron.schedule('0 * * * *', async () => {
         try {
             console.log('Running payment expiration check job...');
@@ -40,6 +41,39 @@ const schedulePaymentExpirationChecks = () => {
                 await NotificationService.sendAppointmentCancellationNotification(appointment, 'system');
 
                 console.log(`Canceled appointment ${appointment._id} due to payment expiration`);
+            }
+
+            // Check for pending doctor confirmations that have expired
+            const pendingConfirmationAppointments = await Appointment.find({
+                status: 'pending-doctor-confirmation',
+                doctorConfirmationExpires: { $lt: new Date() }
+            }).populate('doctor patient');
+
+            console.log(`Found ${pendingConfirmationAppointments.length} expired doctor confirmation appointments`);
+
+            // Process each expired confirmation
+            for (const appointment of pendingConfirmationAppointments) {
+                // Update appointment status
+                appointment.status = 'canceled';
+                appointment.cancellationReason = 'Doctor did not confirm in time';
+                await appointment.save();
+
+                // Process refund if payment exists
+                if (appointment.payment && appointment.payment.transactionId) {
+                    const payment = await Payment.findById(appointment.payment.transactionId);
+                    if (payment && payment.status !== 'refunded') {
+                        payment.status = 'refunded';
+                        await payment.save();
+
+                        // Send refund notification
+                        await NotificationService.sendPaymentRefundNotification(payment);
+                    }
+                }
+
+                // Send cancellation notification
+                await NotificationService.sendAppointmentCancellationNotification(appointment, 'system');
+
+                console.log(`Canceled appointment ${appointment._id} due to expired doctor confirmation`);
             }
 
             console.log('Payment expiration check job completed');

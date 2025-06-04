@@ -270,3 +270,65 @@ exports.verifySessionStatus = async (req, res) => {
         res.status(500).json({ message: 'Failed to verify payment session' });
     }
 };
+
+/**
+ * Process a refund for a payment
+ * @param {String} paymentId - Payment ID to refund
+ * @returns {Promise<Object>} Updated payment object
+ */
+exports.processRefund = async (paymentId) => {
+    try {
+        const payment = await Payment.findById(paymentId);
+
+        if (!payment) {
+            throw new Error(`Payment with ID ${paymentId} not found`);
+        }
+
+        if (payment.status === 'refunded') {
+            console.log(`Payment ${paymentId} is already refunded`);
+            return payment;
+        }
+
+        if (payment.status !== 'succeeded') {
+            console.log(`Payment ${paymentId} is not in succeeded status, current status: ${payment.status}`);
+            return payment;
+        }
+
+        // If using Stripe, initiate Stripe refund
+        if (payment.stripeSessionId) {
+            try {
+                const refund = await stripe.refunds.create({
+                    payment_intent: payment.stripePaymentIntentId,
+                    reason: 'requested_by_customer'
+                });
+
+                payment.refundId = refund.id;
+            } catch (stripeError) {
+                console.error('Error processing Stripe refund:', stripeError);
+                // Continue with status update even if Stripe refund fails
+                // This allows manual handling of refunds if needed
+            }
+        }
+
+        // Update payment status
+        payment.status = 'refunded';
+        payment.refundedAt = new Date();
+        await payment.save();
+
+        // Find related appointment
+        const appointment = await Appointment.findById(payment.appointment);
+        if (appointment) {
+            appointment.payment.status = 'refunded';
+            await appointment.save();
+        }
+
+        // Send notification
+        await NotificationService.sendPaymentRefundNotification(payment);
+
+        console.log(`Successfully processed refund for payment ${paymentId}`);
+        return payment;
+    } catch (error) {
+        console.error(`Error processing refund for payment ${paymentId}:`, error);
+        throw error;
+    }
+};

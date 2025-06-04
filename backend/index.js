@@ -21,7 +21,7 @@ require('./db');
 const userRoutes = require('./src/user/routes');
 const appointmentRoutes = require('./src/appointment/routes');
 const telegramRoutes = require('./src/bot/routes');
-const assistantRoutes = require('./src/assistant/routes');
+// const assistantRoutes = require('./src/assistant/routes');
 const paymentRoutes = require('./src/payment/routes');
 const consultationRoutes = require('./src/consultation/routes');
 const adminRoutes = require('./src/admin/routes');
@@ -134,36 +134,59 @@ app.use((req, res, next) => {
     if (!req.body) return next();
 
     // Function to sanitize strings (basic HTML escape)
-    const sanitizeXSS = (str) => {
+    const sanitizeXSS = (str, fieldName) => {
         if (typeof str !== 'string') return str;
-        return str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#x27;')
-            .replace(/\//g, '&#x2F;');
+
+        // Only sanitize fields that could contain HTML/script tags
+        // For text fields like bio, we should preserve apostrophes and quotes
+        const fieldsToFullySanitize = ['html', 'script', 'code', 'content'];
+        const fieldsToPreserveQuotes = ['bio', 'reasonForVisit', 'consultationSummary', 'notes', 'text', 'comment'];
+
+        // Check if this field should preserve quotes and apostrophes
+        const shouldPreserveQuotes = fieldsToPreserveQuotes.some(field =>
+            fieldName.toLowerCase().includes(field.toLowerCase())
+        );
+
+        // Apply full sanitization or limited sanitization
+        if (shouldPreserveQuotes) {
+            // Only sanitize < and > to prevent script tags, but preserve quotes and apostrophes
+            return str
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        } else {
+            // Apply full sanitization
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#x27;')
+                .replace(/\//g, '&#x2F;');
+        }
     };
 
     // Function to sanitize object
-    const sanitizeObj = (obj) => {
+    const sanitizeObj = (obj, parentKey = '') => {
         const result = {};
 
         Object.keys(obj).forEach(key => {
+            const currentKey = parentKey ? `${parentKey}.${key}` : key;
+
             // Handle nested objects and arrays
             if (typeof obj[key] === 'object' && obj[key] !== null) {
                 if (Array.isArray(obj[key])) {
-                    result[key] = obj[key].map(item =>
-                        typeof item === 'object' && item !== null ? sanitizeObj(item) :
-                            typeof item === 'string' ? sanitizeXSS(item) : item
+                    result[key] = obj[key].map((item, index) =>
+                        typeof item === 'object' && item !== null ?
+                            sanitizeObj(item, `${currentKey}[${index}]`) :
+                            typeof item === 'string' ? sanitizeXSS(item, currentKey) : item
                     );
                 } else {
-                    result[key] = sanitizeObj(obj[key]);
+                    result[key] = sanitizeObj(obj[key], currentKey);
                 }
             }
             // Sanitize strings
             else if (typeof obj[key] === 'string') {
-                result[key] = sanitizeXSS(obj[key]);
+                result[key] = sanitizeXSS(obj[key], currentKey);
             }
             // Keep other types as is
             else {
@@ -177,6 +200,80 @@ app.use((req, res, next) => {
     // Apply sanitization to body
     if (req.body && typeof req.body === 'object') {
         req.body = sanitizeObj(req.body);
+    }
+
+    next();
+});
+
+// Response middleware to decode HTML entities in specific fields
+app.use((req, res, next) => {
+    // Save the original res.json function
+    const originalJson = res.json;
+
+    // Override the res.json function
+    res.json = function (data) {
+        // If data is an object and not null, process it
+        if (data && typeof data === 'object') {
+            data = decodeHtmlEntitiesInObject(data);
+        }
+
+        // Call the original json function with processed data
+        return originalJson.call(this, data);
+    };
+
+    // Function to decode HTML entities in strings
+    function decodeHtmlEntities(str) {
+        if (typeof str !== 'string') return str;
+
+        return str
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#x27;/g, "'")
+            .replace(/&#x2F;/g, '/')
+            .replace(/&amp;/g, '&');
+    }
+
+    // Function to process objects and decode HTML entities
+    function decodeHtmlEntitiesInObject(obj) {
+        if (!obj) return obj;
+
+        // Handle different types
+        if (typeof obj === 'string') {
+            return decodeHtmlEntities(obj);
+        }
+
+        if (Array.isArray(obj)) {
+            return obj.map(item => decodeHtmlEntitiesInObject(item));
+        }
+
+        if (typeof obj === 'object') {
+            const result = {};
+
+            // These fields should have HTML entities decoded
+            const fieldsToProcess = [
+                'bio', 'reasonForVisit', 'consultationSummary',
+                'notes', 'text', 'comment', 'message'
+            ];
+
+            // Process each property
+            for (const key in obj) {
+                if (Object.hasOwnProperty.call(obj, key)) {
+                    // If this is a field we should decode, or it's an object that might contain such fields
+                    if (fieldsToProcess.includes(key) && typeof obj[key] === 'string') {
+                        result[key] = decodeHtmlEntities(obj[key]);
+                    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                        result[key] = decodeHtmlEntitiesInObject(obj[key]);
+                    } else {
+                        result[key] = obj[key];
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        return obj;
     }
 
     next();
@@ -215,7 +312,7 @@ initializeSocketIO(io);
 app.use('/api/users', userRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/telegram', telegramRoutes);
-app.use('/api/assistant', assistantRoutes);
+// app.use('/api/assistant', assistantRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/consultations', consultationRoutes);
 app.use('/api/admin', adminRoutes);

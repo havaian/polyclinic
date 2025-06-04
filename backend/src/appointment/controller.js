@@ -813,8 +813,8 @@ exports.updateConsultationResults = async (req, res) => {
         if (prescriptions && Array.isArray(prescriptions) && prescriptions.length > 0) {
             // Filter out invalid prescriptions
             const validPrescriptions = prescriptions.filter(prescription => {
-                return prescription.medication && prescription.dosage && 
-                       prescription.frequency && prescription.duration;
+                return prescription.medication && prescription.dosage &&
+                    prescription.frequency && prescription.duration;
             });
 
             // Add timestamp to each new prescription
@@ -983,5 +983,99 @@ exports.getDocuments = async (req, res) => {
     } catch (error) {
         console.error('Error fetching documents:', error);
         res.status(500).json({ message: 'An error occurred while fetching documents' });
+    }
+};
+
+/**
+ * Get appointments in calendar format
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+exports.getCalendarAppointments = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const { startDate, endDate, view = 'month' } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ message: 'Start date and end date are required for calendar view' });
+        }
+
+        // Set up query based on user role
+        const query = {};
+
+        if (userRole === 'doctor') {
+            query.doctor = userId;
+        } else if (userRole === 'patient') {
+            query.patient = userId;
+        } else if (userRole !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized access to calendar' });
+        }
+
+        // Add date range to query
+        query.dateTime = {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate)
+        };
+
+        // Get appointments
+        const appointments = await Appointment.find(query)
+            .populate('doctor', 'firstName lastName specializations')
+            .populate('patient', 'firstName lastName')
+            .sort({ dateTime: 1 });
+
+        // Format appointments for calendar view
+        const calendarEvents = appointments.map(appointment => {
+            const eventColor = getStatusColor(appointment.status);
+
+            return {
+                id: appointment._id,
+                title: userRole === 'doctor'
+                    ? `${appointment.patient.firstName} ${appointment.patient.lastName}`
+                    : `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}`,
+                start: appointment.dateTime,
+                end: appointment.endTime,
+                backgroundColor: eventColor,
+                borderColor: eventColor,
+                extendedProps: {
+                    status: appointment.status,
+                    type: appointment.type,
+                    reasonForVisit: appointment.reasonForVisit,
+                    appointmentId: appointment._id
+                }
+            };
+        });
+
+        // Helper function to get color based on status
+        function getStatusColor(status) {
+            switch (status) {
+                case 'scheduled':
+                    return '#4a90e2'; // Blue
+                case 'completed':
+                    return '#2ecc71'; // Green
+                case 'canceled':
+                    return '#e74c3c'; // Red
+                case 'pending-payment':
+                    return '#f39c12'; // Orange
+                case 'pending-doctor-confirmation':
+                    return '#9b59b6'; // Purple
+                case 'no-show':
+                    return '#95a5a6'; // Gray
+                default:
+                    return '#3498db'; // Default blue
+            }
+        }
+
+        res.status(200).json({
+            calendarEvents,
+            totalAppointments: appointments.length,
+            dateRange: {
+                start: startDate,
+                end: endDate
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching calendar appointments:', error);
+        res.status(500).json({ message: 'An error occurred while fetching calendar appointments' });
     }
 };

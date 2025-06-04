@@ -428,6 +428,200 @@ class ConsultationController {
             res.status(500).json({ message: 'An error occurred while saving chat log' });
         }
     };
+
+    /**
+     * Handle consultation room exit
+     * @param {Object} req - Express request object
+     * @param {Object} res - Express response object
+    */
+    handleRoomExit = async (req, res) => {
+        try {
+            const { appointmentId, userId } = req.body;
+
+            if (!appointmentId || !userId) {
+                return res.status(400).json({ message: 'Appointment ID and User ID are required' });
+            }
+
+            // Find appointment
+            const appointment = await Appointment.findById(appointmentId);
+
+            if (!appointment) {
+                return res.status(404).json({ message: 'Appointment not found' });
+            }
+
+            // Only process for scheduled appointments
+            if (appointment.status !== 'scheduled') {
+                return res.status(200).json({
+                    message: 'Appointment is not in scheduled status',
+                    status: appointment.status
+                });
+            }
+
+            // Track participant exit in the appointment metadata
+            if (!appointment.participantStatus) {
+                appointment.participantStatus = {};
+            }
+
+            // Record exit time
+            appointment.participantStatus[userId] = {
+                exitTime: new Date(),
+                status: 'left'
+            };
+
+            // Check if both participants have left
+            const doctorId = appointment.doctor.toString();
+            const patientId = appointment.patient.toString();
+
+            const bothParticipantsLeft =
+                appointment.participantStatus[doctorId]?.status === 'left' &&
+                appointment.participantStatus[patientId]?.status === 'left';
+
+            // If both have left and at least 10 minutes have passed since appointment start time
+            const appointmentStartTime = new Date(appointment.dateTime);
+            const now = new Date();
+            const minutesSinceStart = (now - appointmentStartTime) / (1000 * 60);
+
+            if (bothParticipantsLeft && minutesSinceStart >= 10) {
+                // Auto-complete the appointment
+                appointment.status = 'completed';
+
+                // Add default consultation summary if none exists
+                if (!appointment.consultationSummary) {
+                    appointment.consultationSummary = 'This consultation was automatically marked as completed when both participants left the session.';
+                }
+
+                // Send notification
+                await NotificationService.sendConsultationCompletedNotification(appointment);
+
+                console.log(`Auto-completed consultation ${appointment._id} after both participants left the room`);
+            }
+
+            await appointment.save();
+
+            res.status(200).json({
+                message: 'Room exit recorded successfully',
+                bothLeft: bothParticipantsLeft,
+                appointmentStatus: appointment.status
+            });
+        } catch (error) {
+            console.error('Error handling room exit:', error);
+            res.status(500).json({ message: 'An error occurred while processing room exit' });
+        }
+    }
+
+    /**
+     * Update consultation summary and add new prescriptions
+     * @param {Object} req - Express request object
+     * @param {Object} res - Express response object
+    */
+    updateConsultationResults = async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { consultationSummary, prescriptions, followUp } = req.body;
+            const doctorId = req.user.id;
+
+            // Find the appointment
+            const appointment = await Appointment.findById(id)
+                .populate('patient', 'firstName lastName email telegramId')
+                .populate('doctor', 'firstName lastName email telegramId');
+
+            if (!appointment) {
+                return res.status(404).json({ message: 'Appointment not found' });
+            }
+
+            // Verify doctor is assigned to this appointment
+            if (appointment.doctor._id.toString() !== doctorId) {
+                return res.status(403).json({ message: 'You are not authorized to update this consultation' });
+            }
+
+            // Verify appointment is completed
+            if (appointment.status !== 'completed') {
+                return res.status(400).json({ message: 'Can only update completed consultations' });
+            }
+
+            // Update consultation summary if provided
+            if (consultationSummary) {
+                appointment.consultationSummary = consultationSummary;
+            }
+
+            // Add new prescriptions if provided (don't replace existing ones)
+            if (prescriptions && Array.isArray(prescriptions) && prescriptions.length > 0) {
+                // Filter out invalid prescriptions
+                const validPrescriptions = prescriptions.filter(prescription => {
+                    return prescription.medication && prescription.dosage &&
+                        prescription.frequency && prescription.duration;
+                });
+
+                // Add timestamp to each new prescription
+                const timestampedPrescriptions = validPrescriptions.map(prescription => ({
+                    ...prescription,
+                    createdAt: Date.now()
+                }));
+
+                // If appointment already has prescriptions, append new ones
+                if (appointment.prescriptions && Array.isArray(appointment.prescriptions)) {
+                    appointment.prescriptions = [...appointment.prescriptions, ...timestampedPrescriptions];
+                } else {
+                    appointment.prescriptions = timestampedPrescriptions;
+                }
+
+                // Send prescription notification
+                if (timestampedPrescriptions.length > 0) {
+                    await NotificationService.sendPrescriptionNotification(appointment);
+                }
+            }
+
+            // Update follow-up recommendation if provided
+            if (followUp && followUp.recommended) {
+                appointment.followUp = {
+                    recommended: true,
+                    date: new Date(followUp.date),
+                    notes: followUp.notes || ''
+                };
+
+                // If creating a follow-up appointment was requested
+                if (followUp.createAppointment) {
+                    // Calculate end time
+                    const followUpDateObj = new Date(followUp.date);
+                    const duration = followUp.duration || 30;
+                    const endTime = new Date(followUpDateObj.getTime() + duration * 60000);
+
+                    // Create a new appointment for the follow-up with pending-payment status
+                    const followUpAppointment = new Appointment({
+                        patient: appointment.patient._id,
+                        doctor: appointment.doctor._id,
+                        dateTime: followUpDateObj,
+                        endTime: endTime,
+                        duration: duration,
+                        type: appointment.type,
+                        reasonForVisit: `Follow-up to appointment on ${appointment.dateTime.toLocaleDateString()} - ${followUp.notes || 'No notes provided'}`,
+                        status: 'pending-payment',
+                        payment: {
+                            amount: appointment.doctor.consultationFee,
+                            status: 'pending'
+                        }
+                    });
+
+                    await followUpAppointment.save();
+
+                    // Notify about follow-up
+                    await NotificationService.sendFollowUpNotification(followUpAppointment);
+                }
+            }
+
+            // Save changes
+            await appointment.save();
+
+            res.status(200).json({
+                message: 'Consultation results updated successfully',
+                appointment
+            });
+
+        } catch (error) {
+            console.error('Error updating consultation results:', error);
+            res.status(500).json({ message: 'An error occurred while updating consultation results' });
+        }
+    }
 }
 
 module.exports = ConsultationController;

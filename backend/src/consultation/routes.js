@@ -77,4 +77,15 @@ router.post(
     consultationController.saveChatLog
 );
 
+/**
+ * @route POST /api/consultations/:appointmentId/exit
+ * @desc Handle exit from consultation room
+ * @access Private (Patient or Doctor involved in appointment)
+ */
+router.post(
+    '/:appointmentId/exit',
+    authenticateUser,
+    consultationController.handleRoomExit
+);
+
 module.exports = router;

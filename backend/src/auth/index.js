@@ -376,25 +376,6 @@ exports.preventDoctorRegistration = (req, res, next) => {
 };
 
 /**
- * Middleware to ensure terms are accepted during registration
- */
-exports.ensureTermsAccepted = (req, res, next) => {
-    // If it's a registration request
-    if (req.path.includes('/register') && req.method === 'POST') {
-        // Check if terms and privacy policy are accepted
-        const { termsAccepted, privacyPolicyAccepted } = req.body;
-
-        if (!termsAccepted || !privacyPolicyAccepted) {
-            return res.status(400).json({
-                message: 'You must accept the Terms of Service and Privacy Policy to register.'
-            });
-        }
-    }
-
-    next();
-};
-
-/**
  * Middleware to check if a user is a doctor and registered by admin
  * Only admin can register doctors - rejects direct doctor registrations
  */
@@ -516,5 +497,127 @@ exports.handleTextEncoding = (req, res, next) => {
 
     next();
 };
+
+/**
+ * Middleware to verify content for inappropriate patterns
+ * Checks for contact information sharing attempts
+ */
+exports.contentFilter = (req, res, next) => {
+    try {
+        const { text, message } = req.body;
+
+        const contentToCheck = text || message || '';
+
+        if (!contentToCheck) {
+            return next();
+        }
+
+        // Patterns to detect: phone numbers, emails, telegram usernames, etc.
+        const patterns = [
+            /\+\d{10,15}/g, // Phone numbers with country code
+            /\b\d{9,11}\b/g, // Phone numbers without formatting
+            /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, // Emails
+            /\@[A-Za-z0-9_]{5,}/g, // Telegram usernames
+            /\bt\.me\/[A-Za-z0-9_]+\b/g, // Telegram links
+            /telegram\.\w+/gi, // Telegram domain references
+            /\bwhatsapp\b/gi, // WhatsApp references
+            /\bviber\b/gi, // Viber references
+            /\bsignal\b/gi, // Signal references
+            /\binstagram\b/gi, // Instagram references
+            /\bfacebook\b/gi, // Facebook references
+            /\bmessenger\b/gi // Messenger references
+        ];
+
+        // Check if any pattern matches
+        let violation = false;
+        let matches = [];
+
+        for (const pattern of patterns) {
+            const match = contentToCheck.match(pattern);
+            if (match) {
+                violation = true;
+                matches = [...matches, ...match];
+            }
+        }
+
+        if (violation) {
+            // Get user from request
+            const userId = req.user?.id;
+
+            if (!userId) {
+                return res.status(400).json({
+                    message: 'Content contains prohibited information. Please remove contact details or external communication platforms references.'
+                });
+            }
+
+            // Log violation
+            logContentViolation(userId, matches, contentToCheck);
+
+            // Return error
+            return res.status(400).json({
+                message: 'For your safety and privacy, sharing contact information or references to external communication platforms is not allowed. Please communicate through the platform.'
+            });
+        }
+
+        next();
+    } catch (error) {
+        console.error('Content filter error:', error);
+        next(); // Allow the request to continue in case of filter error
+    }
+};
+
+/**
+ * Log content violation for user
+ * @param {String} userId User ID
+ * @param {Array} matches Array of matched patterns
+ * @param {String} content Original content
+ */
+async function logContentViolation(userId, matches, content) {
+    try {
+        // Get user
+        const User = require('../user/model');
+        const user = await User.findById(userId);
+
+        if (!user) {
+            console.error('Content violation: User not found', userId);
+            return;
+        }
+
+        // Initialize violations counter if not exists
+        if (!user.contentViolations) {
+            user.contentViolations = [];
+        }
+
+        // Add new violation
+        user.contentViolations.push({
+            timestamp: Date.now(),
+            matches: matches,
+            contentExcerpt: content.substring(0, 100) // Store only first 100 chars
+        });
+
+        // Apply penalties based on number of violations
+        const violationCount = user.contentViolations.length;
+
+        if (violationCount >= 10) {
+            // Permanent ban
+            user.isActive = false;
+            user.banReason = 'Multiple content policy violations';
+        } else if (violationCount >= 5) {
+            // Temporary ban - 7 days
+            user.isSuspended = true;
+            user.suspensionEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            user.suspensionReason = 'Repeated content policy violations';
+        } else if (violationCount >= 3) {
+            // Warning
+            user.hasWarning = true;
+            user.warningMessage = 'You have violated our content policy multiple times. Further violations may result in suspension.';
+        }
+
+        await user.save();
+
+    } catch (error) {
+        console.error('Error logging content violation:', error);
+    }
+}
 
 module.exports = exports;

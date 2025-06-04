@@ -38,7 +38,24 @@ exports.sanitizeInput = function(text) {
 };
 
 /**
- * Decode safely encoded text for display
+ * Decode HTML entities in text
+ * @param {String} text - Text to decode
+ * @returns {String} Decoded text
+ */
+exports.decodeHtmlEntities = function(text) {
+    if (!text || typeof text !== 'string') return text;
+    
+    return text
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#x27;/g, "'")
+        .replace(/&#x2F;/g, '/')
+        .replace(/&amp;/g, '&');
+};
+
+/**
+ * Safely decode text for display
  * @param {String} text - Text to decode
  * @returns {String} Decoded text
  */
@@ -46,9 +63,11 @@ exports.safeDecodeText = function(text) {
     if (!text || typeof text !== 'string') return text;
     
     try {
-        // For now, just return the text as it's already in a readable format
-        // This function can be extended later if needed
-        return text;
+        // First normalize Unicode
+        const normalizedText = text.normalize('NFC');
+        
+        // Then decode any HTML entities
+        return exports.decodeHtmlEntities(normalizedText);
     } catch (error) {
         console.error('Error decoding text:', error);
         return text; // Return original if decoding fails

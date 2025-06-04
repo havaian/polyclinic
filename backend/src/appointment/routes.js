@@ -193,4 +193,26 @@ router.post(
     appointmentController.uploadDocument
 );
 
+/**
+ * @route GET /api/appointments/:id/documents
+ * @desc Get documents for an appointment
+ * @access Private (Only involved parties or Admin)
+ */
+router.get(
+    '/:id/documents',
+    authenticateUser,
+    appointmentController.getDocuments
+);
+
+/**
+ * @route GET /api/appointments/calendar
+ * @desc Get appointments in calendar format
+ * @access Private
+ */
+router.get(
+    '/calendar',
+    authenticateUser,
+    appointmentController.getCalendarAppointments
+);
+
 module.exports = router;
