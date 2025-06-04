@@ -169,6 +169,7 @@ router.get(
     ensureOwnership('doctorId'),
     appointmentController.getPendingConfirmations
 );
+
 /**
  * @route PATCH /api/appointments/:id/consultation-results
  * @desc Update consultation results (summary, prescriptions, follow-up)

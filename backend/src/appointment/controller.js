@@ -683,6 +683,71 @@ exports.getDoctorAvailability = async (req, res) => {
     }
 };
 
+/**
+ * Get appointments pending doctor confirmation
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+exports.getPendingConfirmations = async (req, res) => {
+    try {
+        const { doctorId } = req.params;
+        const { limit = 10, skip = 0 } = req.query;
+
+        // Find appointments that are pending doctor confirmation for this doctor
+        const query = {
+            doctor: doctorId,
+            status: 'pending-doctor-confirmation',
+            // Only include appointments that haven't expired yet
+            doctorConfirmationExpires: { $gt: new Date() }
+        };
+
+        const appointments = await Appointment.find(query)
+            .sort({ doctorConfirmationExpires: 1 }) // Sort by expiration time (most urgent first)
+            .skip(parseInt(skip))
+            .limit(parseInt(limit))
+            .populate('patient', 'firstName lastName profilePicture dateOfBirth email phone')
+            .populate('doctor', 'firstName lastName specializations');
+
+        const total = await Appointment.countDocuments(query);
+
+        // Calculate time remaining for each appointment
+        const appointmentsWithTimeRemaining = appointments.map(appointment => {
+            const now = new Date();
+            const expiresAt = new Date(appointment.doctorConfirmationExpires);
+            const timeRemainingMs = expiresAt - now;
+            const timeRemainingHours = Math.max(0, Math.floor(timeRemainingMs / (1000 * 60 * 60)));
+            const timeRemainingMinutes = Math.max(0, Math.floor((timeRemainingMs % (1000 * 60 * 60)) / (1000 * 60)));
+
+            return {
+                ...appointment.toObject(),
+                timeRemaining: {
+                    hours: timeRemainingHours,
+                    minutes: timeRemainingMinutes,
+                    totalMinutes: Math.max(0, Math.floor(timeRemainingMs / (1000 * 60)))
+                }
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            appointments: appointmentsWithTimeRemaining,
+            pagination: {
+                total,
+                limit: parseInt(limit),
+                skip: parseInt(skip),
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching pending confirmations:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'An error occurred while fetching pending confirmations',
+            error: error.message 
+        });
+    }
+};
+
 // Helper function to generate time slots
 async function generateTimeSlots(date, startTimeStr, endTimeStr, doctorId) {
     // Parse start and end times
