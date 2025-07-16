@@ -36,7 +36,7 @@ router.patch('/users/:id/status', adminController.updateUserStatus);
 
 /**
  * @route PATCH /api/admin/users/:id/verify
- * @desc Manually verify a user (useful for doctors verification)
+ * @desc Manually verify a user (useful for providers verification)
  * @access Private (Admin only)
  */
 router.patch('/users/:id/verify', adminController.verifyUser);
@@ -84,31 +84,31 @@ router.get('/dashboard', adminController.getDashboardStats);
 router.get('/system-health', adminController.getSystemHealth);
 
 /**
- * @route POST /api/admin/specializations
- * @desc Create a new medical specializations
+ * @route POST /api/admin/expertise
+ * @desc Create a new medical expertise
  * @access Private (Admin only)
  */
-router.post('/specializations', adminController.createSpecialization);
+router.post('/expertise', adminController.createSpecialization);
 
 /**
- * @route GET /api/admin/specializations
- * @desc Get all specializations
+ * @route GET /api/admin/expertise
+ * @desc Get all expertise
  * @access Private (Admin only)
  */
-router.get('/specializations', adminController.getAllSpecializations);
+router.get('/expertise', adminController.getAllExpertise);
 
 /**
- * @route PATCH /api/admin/specializations/:id
- * @desc Update a specializations
+ * @route PATCH /api/admin/expertise/:id
+ * @desc Update a expertise
  * @access Private (Admin only)
  */
-router.patch('/specializations/:id', adminController.updateSpecialization);
+router.patch('/expertise/:id', adminController.updateSpecialization);
 
 /**
- * @route DELETE /api/admin/specializations/:id
- * @desc Delete a specializations
+ * @route DELETE /api/admin/expertise/:id
+ * @desc Delete a expertise
  * @access Private (Admin only)
  */
-router.delete('/specializations/:id', adminController.deleteSpecialization);
+router.delete('/expertise/:id', adminController.deleteSpecialization);
 
 module.exports = router;

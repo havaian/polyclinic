@@ -38,15 +38,15 @@
                         <div class="p-6">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center space-x-4">
-                                    <img :src="appointment.doctor.profilePicture || '/images/user-placeholder.jpg'"
-                                        :alt="appointment.doctor.firstName"
+                                    <img :src="appointment.provider.profilePicture || '/images/user-placeholder.jpg'"
+                                        :alt="appointment.provider.firstName"
                                         class="h-12 w-12 rounded-full object-cover" />
                                     <div>
                                         <h3 class="text-lg font-medium text-gray-900">
-                                            Dr. {{ appointment.doctor.firstName }} {{ appointment.doctor.lastName }}
+                                            Dr. {{ appointment.provider.firstName }} {{ appointment.provider.lastName }}
                                         </h3>
                                         <div class="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
-                                            <span v-for="spec in appointment.doctor.specializations" :key="spec"
+                                            <span v-for="spec in appointment.provider.expertise" :key="spec"
                                                 class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                                                 {{ spec }}
                                             </span>
@@ -71,7 +71,7 @@
                                     <p class="text-gray-900">{{ formatDateTime(appointment.dateTime) }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-gray-500">Consultation Type</p>
+                                    <p class="text-sm text-gray-500">Session Type</p>
                                     <p class="text-gray-900">{{ appointment.type.charAt(0).toUpperCase() +
                                         appointment.type.slice(1) }}</p>
                                 </div>
@@ -89,7 +89,7 @@
                                 </button>
                                 <button
                                     v-if="appointment.status === 'scheduled' && isWithinJoinWindow(appointment.dateTime)"
-                                    class="btn-primary" @click="joinConsultation(appointment._id)">
+                                    class="btn-primary" @click="joinSession(appointment._id)">
                                     Join Now
                                 </button>
                             </div>
@@ -149,7 +149,7 @@ async function fetchAppointments() {
             ...filters
         }
 
-        const response = await axios.get(`/api/appointments/patient/${authStore.user._id}`, { params })
+        const response = await axios.get(`/api/appointments/client/${authStore.user._id}`, { params })
         appointments.value = response.data.appointments
         totalPages.value = Math.ceil(response.data.pagination.total / response.data.pagination.limit)
     } catch (error) {
@@ -172,17 +172,17 @@ async function cancelAppointment(appointmentId) {
     }
 }
 
-async function joinConsultation(appointmentId) {
+async function joinSession(appointmentId) {
     try {
-        const response = await axios.get(`/api/consultations/${appointmentId}/join`)
-        if (response.data.consultation) {
+        const response = await axios.get(`/api/sessions/${appointmentId}/join`)
+        if (response.data.session) {
             router.push({
-                name: 'consultation-room',
+                name: 'session-room',
                 params: { appointmentId }
             })
         }
     } catch (error) {
-        console.error('Error joining consultation:', error)
+        console.error('Error joining session:', error)
     }
 }
 

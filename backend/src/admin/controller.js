@@ -1,7 +1,7 @@
 const User = require('../user/model');
 const Appointment = require('../appointment/model');
 const Payment = require('../payment/model');
-const Specialization = require('../specializations/model');
+const Specialization = require('../expertise/model');
 const mongoose = require('mongoose');
 const { redisClient } = require('../utils/redisClient');
 
@@ -99,11 +99,11 @@ exports.getUserById = async (req, res) => {
         // Get additional statistics if needed
         let stats = {};
 
-        if (user.role === 'doctor') {
-            // Doctor stats (appointments, ratings, etc.)
-            const appointmentCount = await Appointment.countDocuments({ doctor: id });
-            const completedAppointments = await Appointment.countDocuments({ doctor: id, status: 'completed' });
-            const canceledAppointments = await Appointment.countDocuments({ doctor: id, status: 'canceled' });
+        if (user.role === 'provider') {
+            // Provider stats (appointments, ratings, etc.)
+            const appointmentCount = await Appointment.countDocuments({ provider: id });
+            const completedAppointments = await Appointment.countDocuments({ provider: id, status: 'completed' });
+            const canceledAppointments = await Appointment.countDocuments({ provider: id, status: 'canceled' });
 
             stats = {
                 appointmentCount,
@@ -111,12 +111,12 @@ exports.getUserById = async (req, res) => {
                 canceledAppointments,
                 completionRate: appointmentCount > 0 ? (completedAppointments / appointmentCount) * 100 : 0
             };
-        } else if (user.role === 'patient') {
-            // Patient stats (appointments, payments, etc.)
-            const appointmentCount = await Appointment.countDocuments({ patient: id });
-            const completedAppointments = await Appointment.countDocuments({ patient: id, status: 'completed' });
-            const paymentCount = await Payment.countDocuments({ patient: id });
-            const successfulPayments = await Payment.countDocuments({ patient: id, status: 'succeeded' });
+        } else if (user.role === 'client') {
+            // Client stats (appointments, payments, etc.)
+            const appointmentCount = await Appointment.countDocuments({ client: id });
+            const completedAppointments = await Appointment.countDocuments({ client: id, status: 'completed' });
+            const paymentCount = await Payment.countDocuments({ client: id });
+            const successfulPayments = await Payment.countDocuments({ client: id, status: 'succeeded' });
 
             stats = {
                 appointmentCount,
@@ -152,9 +152,9 @@ exports.updateUser = async (req, res) => {
             lastName,
             phone,
             role,
-            specializations,
+            expertise,
             experience,
-            consultationFee,
+            sessionFee,
             address,
             bio,
             languages
@@ -173,15 +173,15 @@ exports.updateUser = async (req, res) => {
         if (phone) user.phone = phone;
 
         // Admin can change role (but be careful with this)
-        if (role && ['patient', 'doctor', 'admin'].includes(role)) {
+        if (role && ['client', 'provider', 'admin'].includes(role)) {
             user.role = role;
         }
 
-        // Doctor-specific fields
-        if (user.role === 'doctor') {
-            if (specializations) user.specializations = specializations;
+        // Provider-specific fields
+        if (user.role === 'provider') {
+            if (expertise) user.expertise = expertise;
             if (experience !== undefined) user.experience = experience;
-            if (consultationFee) user.consultationFee = consultationFee;
+            if (sessionFee) user.sessionFee = sessionFee;
             if (bio) user.bio = bio;
             if (languages) user.languages = languages;
         }
@@ -241,7 +241,7 @@ exports.updateUserStatus = async (req, res) => {
 };
 
 /**
- * Manually verify a user (useful for doctors verification)
+ * Manually verify a user (useful for providers verification)
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
@@ -288,8 +288,8 @@ exports.getAllAppointments = async (req, res) => {
             type,
             startDate,
             endDate,
-            patientId,
-            doctorId,
+            clientId,
+            providerId,
             sortBy = 'dateTime',
             sortOrder = 'desc',
             page = 1,
@@ -319,12 +319,12 @@ exports.getAllAppointments = async (req, res) => {
             }
         }
 
-        if (patientId) {
-            query.patient = patientId;
+        if (clientId) {
+            query.client = clientId;
         }
 
-        if (doctorId) {
-            query.doctor = doctorId;
+        if (providerId) {
+            query.provider = providerId;
         }
 
         // Execute query with pagination
@@ -335,8 +335,8 @@ exports.getAllAppointments = async (req, res) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const appointments = await Appointment.find(query)
-            .populate('patient', 'firstName lastName email phone')
-            .populate('doctor', 'firstName lastName specializations')
+            .populate('client', 'firstName lastName email phone')
+            .populate('provider', 'firstName lastName expertise')
             .sort(sortOptions)
             .skip(skip)
             .limit(parseInt(limit));
@@ -371,8 +371,8 @@ exports.getAppointmentById = async (req, res) => {
         const { id } = req.params;
 
         const appointment = await Appointment.findById(id)
-            .populate('patient', 'firstName lastName email phone dateOfBirth gender')
-            .populate('doctor', 'firstName lastName email phone specializations experience');
+            .populate('client', 'firstName lastName email phone dateOfBirth gender')
+            .populate('provider', 'firstName lastName email phone expertise experience');
 
         if (!appointment) {
             return res.status(404).json({ message: 'Appointment not found' });
@@ -409,8 +409,8 @@ exports.updateAppointment = async (req, res) => {
             dateTime,
             type,
             status,
-            reasonForVisit,
-            consultationSummary
+            purpose,
+            sessionSummary
         } = req.body;
 
         const appointment = await Appointment.findById(id);
@@ -423,8 +423,8 @@ exports.updateAppointment = async (req, res) => {
         if (dateTime) appointment.dateTime = new Date(dateTime);
         if (type) appointment.type = type;
         if (status) appointment.status = status;
-        if (reasonForVisit) appointment.reasonForVisit = reasonForVisit;
-        if (consultationSummary) appointment.consultationSummary = consultationSummary;
+        if (purpose) appointment.purpose = purpose;
+        if (sessionSummary) appointment.sessionSummary = sessionSummary;
 
         await appointment.save();
 
@@ -452,8 +452,8 @@ exports.getAllPayments = async (req, res) => {
             status,
             startDate,
             endDate,
-            patientId,
-            doctorId,
+            clientId,
+            providerId,
             minAmount,
             maxAmount,
             sortBy = 'createdAt',
@@ -481,12 +481,12 @@ exports.getAllPayments = async (req, res) => {
             }
         }
 
-        if (patientId) {
-            query.patient = patientId;
+        if (clientId) {
+            query.client = clientId;
         }
 
-        if (doctorId) {
-            query.doctor = doctorId;
+        if (providerId) {
+            query.provider = providerId;
         }
 
         if (minAmount || maxAmount) {
@@ -509,8 +509,8 @@ exports.getAllPayments = async (req, res) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const payments = await Payment.find(query)
-            .populate('patient', 'firstName lastName email')
-            .populate('doctor', 'firstName lastName specializations')
+            .populate('client', 'firstName lastName email')
+            .populate('provider', 'firstName lastName expertise')
             .populate('appointment', 'dateTime type status')
             .sort(sortOptions)
             .skip(skip)
@@ -573,8 +573,8 @@ exports.getDashboardStats = async (req, res) => {
 
         // User stats
         const totalUsers = await User.countDocuments();
-        const totalPatients = await User.countDocuments({ role: 'patient' });
-        const totalDoctors = await User.countDocuments({ role: 'doctor' });
+        const totalClients = await User.countDocuments({ role: 'client' });
+        const totalProviders = await User.countDocuments({ role: 'provider' });
         const newUsersToday = await User.countDocuments({ createdAt: { $gte: today } });
 
         // Appointment stats
@@ -679,8 +679,8 @@ exports.getDashboardStats = async (req, res) => {
         res.status(200).json({
             users: {
                 total: totalUsers,
-                patients: totalPatients,
-                doctors: totalDoctors,
+                clients: totalClients,
+                providers: totalProviders,
                 newToday: newUsersToday
             },
             appointments: {
@@ -794,7 +794,7 @@ exports.getSystemHealth = async (req, res) => {
 };
 
 /**
- * Create a new medical specializations
+ * Create a new medical expertise
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
@@ -806,7 +806,7 @@ exports.createSpecialization = async (req, res) => {
             return res.status(400).json({ message: 'Specialization name is required' });
         }
 
-        // Check if specializations already exists
+        // Check if expertise already exists
         const existingSpecialization = await Specialization.findOne({
             name: { $regex: new RegExp(`^${name}$`, 'i') }
         });
@@ -815,71 +815,71 @@ exports.createSpecialization = async (req, res) => {
             return res.status(400).json({ message: 'Specialization already exists' });
         }
 
-        // Create new specializations
-        const specializations = new Specialization({
+        // Create new expertise
+        const expertise = new Specialization({
             name,
             description,
             icon
         });
 
-        await specializations.save();
+        await expertise.save();
 
         res.status(201).json({
             message: 'Specialization created successfully',
-            specializations
+            expertise
         });
     } catch (error) {
-        console.error('Error creating specializations:', error);
+        console.error('Error creating expertise:', error);
         res.status(500).json({
-            message: 'An error occurred while creating specializations',
+            message: 'An error occurred while creating expertise',
             error: error.message
         });
     }
 };
 
 /**
- * Get all specializations
+ * Get all expertise
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-exports.getAllSpecializations = async (req, res) => {
+exports.getAllExpertise = async (req, res) => {
     try {
-        const specializations = await Specialization.find().sort({ name: 1 });
+        const expertise = await Specialization.find().sort({ name: 1 });
 
-        // Get stats for each specializations
-        const specializationsWithStats = await Promise.all(specializations.map(async (spec) => {
-            const doctorCount = await User.countDocuments({
-                role: 'doctor',
-                specializations: spec.name,
+        // Get stats for each expertise
+        const expertiseWithStats = await Promise.all(expertise.map(async (spec) => {
+            const providerCount = await User.countDocuments({
+                role: 'provider',
+                expertise: spec.name,
                 isActive: true,
                 isVerified: true
             });
 
             const appointmentCount = await Appointment.countDocuments({
-                doctor: { $in: await User.find({ specializations: spec.name }).distinct('_id') }
+                provider: { $in: await User.find({ expertise: spec.name }).distinct('_id') }
             });
 
             return {
                 ...spec.toObject(),
-                doctorCount,
+                providerCount,
                 appointmentCount
             };
         }));
 
         res.status(200).json({
-            specializations: specializationsWithStats
+            expertise: expertiseWithStats
         });
     } catch (error) {
-        console.error('Error fetching specializations:', error);
+        console.error('Error fetching expertise:', error);
         res.status(500).json({
-            message: 'An error occurred while fetching specializations',
+            message: 'An error occurred while fetching expertise',
             error: error.message
         });
     }
 };
 
 /** 
- * Update a specializations 
+ * Update a expertise 
  * @param {Object} req - Express request object 
  * @param {Object} res - Express response object 
  */
@@ -888,15 +888,15 @@ exports.updateSpecialization = async (req, res) => {
         const { id } = req.params;
         const { name, description, icon, isActive } = req.body;
 
-        // Find specializations 
-        const specializations = await Specialization.findById(id);
+        // Find expertise 
+        const expertise = await Specialization.findById(id);
 
-        if (!specializations) {
+        if (!expertise) {
             return res.status(404).json({ message: 'Specialization not found' });
         }
 
         // Check if new name already exists (if name is being updated) 
-        if (name && name !== specializations.name) {
+        if (name && name !== expertise.name) {
             const existingSpecialization = await Specialization.findOne({
                 name: { $regex: new RegExp(`^${name}$`, 'i') },
                 _id: { $ne: id }
@@ -906,31 +906,31 @@ exports.updateSpecialization = async (req, res) => {
                 return res.status(400).json({ message: 'Specialization with this name already exists' });
             }
 
-            specializations.name = name;
+            expertise.name = name;
         }
 
         // Update other fields 
-        if (description !== undefined) specializations.description = description;
-        if (icon !== undefined) specializations.icon = icon;
-        if (isActive !== undefined) specializations.isActive = isActive;
+        if (description !== undefined) expertise.description = description;
+        if (icon !== undefined) expertise.icon = icon;
+        if (isActive !== undefined) expertise.isActive = isActive;
 
-        await specializations.save();
+        await expertise.save();
 
         res.status(200).json({
             message: 'Specialization updated successfully',
-            specializations
+            expertise
         });
     } catch (error) {
-        console.error('Error updating specializations:', error);
+        console.error('Error updating expertise:', error);
         res.status(500).json({
-            message: 'An error occurred while updating specializations',
+            message: 'An error occurred while updating expertise',
             error: error.message
         });
     }
 };
 
 /**
- * Delete a specializations
+ * Delete a expertise
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
@@ -938,35 +938,35 @@ exports.deleteSpecialization = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Check if specializations exists
-        const specializations = await Specialization.findById(id);
+        // Check if expertise exists
+        const expertise = await Specialization.findById(id);
 
-        if (!specializations) {
+        if (!expertise) {
             return res.status(404).json({ message: 'Specialization not found' });
         }
 
-        // Check if specializations is in use
-        const doctorsUsingSpecialization = await User.countDocuments({
-            specializations: specializations.name
+        // Check if expertise is in use
+        const providersUsingSpecialization = await User.countDocuments({
+            expertise: expertise.name
         });
 
-        if (doctorsUsingSpecialization > 0) {
+        if (providersUsingSpecialization > 0) {
             return res.status(400).json({
-                message: 'Cannot delete specializations that is in use by doctors',
-                doctorsCount: doctorsUsingSpecialization
+                message: 'Cannot delete expertise that is in use by providers',
+                providersCount: providersUsingSpecialization
             });
         }
 
-        // Delete specializations
-        await specializations.remove();
+        // Delete expertise
+        await expertise.remove();
 
         res.status(200).json({
             message: 'Specialization deleted successfully'
         });
     } catch (error) {
-        console.error('Error deleting specializations:', error);
+        console.error('Error deleting expertise:', error);
         res.status(500).json({
-            message: 'An error occurred while deleting specializations',
+            message: 'An error occurred while deleting expertise',
             error: error.message
         });
     }

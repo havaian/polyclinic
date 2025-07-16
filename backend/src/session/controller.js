@@ -4,22 +4,22 @@ const JitsiUtils = require('../utils/jitsiUtils');
 const { NotificationService } = require('../notification');
 
 /**
- * Controller for handling consultation-related operations
+ * Controller for handling session-related operations
  */
-class ConsultationController {
+class SessionController {
     /**
-     * Initialize consultation controller
+     * Initialize session controller
      */
     constructor() {
         // No need for webRTCService with Jitsi integration
     }
 
     /**
-     * Join a consultation session
+     * Join a session session
      * @param {Object} req - Express request object
      * @param {Object} res - Express response object
      */
-    joinConsultation = async (req, res) => {
+    joinSession = async (req, res) => {
         try {
             const { appointmentId } = req.params;
             const userId = req.user.id;
@@ -30,25 +30,25 @@ class ConsultationController {
 
             // Find appointment
             const appointment = await Appointment.findById(appointmentId)
-                .populate('doctor', 'firstName lastName profilePicture specializations email')
-                .populate('patient', 'firstName lastName profilePicture dateOfBirth email');
+                .populate('provider', 'firstName lastName profilePicture expertise email')
+                .populate('client', 'firstName lastName profilePicture dateOfBirth email');
 
             if (!appointment) {
                 return res.status(404).json({ message: 'Appointment not found' });
             }
 
             // Check if user is involved in the appointment
-            const isDoctor = req.user.role === 'doctor' && appointment.doctor._id.toString() === userId.toString();
-            const isPatient = req.user.role === 'patient' && appointment.patient._id.toString() === userId.toString();
+            const isProvider = req.user.role === 'provider' && appointment.provider._id.toString() === userId.toString();
+            const isClient = req.user.role === 'client' && appointment.client._id.toString() === userId.toString();
 
-            if (!isDoctor && !isPatient) {
-                return res.status(403).json({ message: 'You are not authorized to join this consultation' });
+            if (!isProvider && !isClient) {
+                return res.status(403).json({ message: 'You are not authorized to join this session' });
             }
 
             // Check if appointment is scheduled or in progress
             if (appointment.status !== 'scheduled') {
                 return res.status(400).json({
-                    message: `Cannot join consultation with status "${appointment.status}"`,
+                    message: `Cannot join session with status "${appointment.status}"`,
                     status: appointment.status
                 });
             }
@@ -61,30 +61,30 @@ class ConsultationController {
             // Can join 5 minutes before scheduled time
             if (timeDiffMinutes > 5) {
                 return res.status(400).json({
-                    message: 'Consultation is not ready yet',
+                    message: 'Session is not ready yet',
                     startsInMinutes: Math.floor(timeDiffMinutes)
                 });
             }
 
             // Cannot join 30 minutes after scheduled time
             if (timeDiffMinutes < -30) {
-                return res.status(400).json({ message: 'Consultation time has expired' });
+                return res.status(400).json({ message: 'Session time has expired' });
             }
 
-            // Check if consultation has already ended (endTime has passed)
+            // Check if session has already ended (endTime has passed)
             if (appointment.endTime && now > appointment.endTime) {
-                return res.status(400).json({ message: 'Consultation has already ended' });
+                return res.status(400).json({ message: 'Session has already ended' });
             }
 
             // User info for Jitsi token
             const userInfo = {
                 id: userId,
-                name: isDoctor ?
-                    `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}` :
-                    `${appointment.patient.firstName} ${appointment.patient.lastName}`,
-                avatar: isDoctor ? appointment.doctor.profilePicture : appointment.patient.profilePicture,
-                email: isDoctor ? appointment.doctor.email : appointment.patient.email,
-                role: isDoctor ? 'doctor' : 'patient'
+                name: isProvider ?
+                    `Dr. ${appointment.provider.firstName} ${appointment.provider.lastName}` :
+                    `${appointment.client.firstName} ${appointment.client.lastName}`,
+                avatar: isProvider ? appointment.provider.profilePicture : appointment.client.profilePicture,
+                email: isProvider ? appointment.provider.email : appointment.client.email,
+                role: isProvider ? 'provider' : 'client'
             };
 
             // Generate Jitsi configuration
@@ -114,51 +114,51 @@ class ConsultationController {
             jitsiConfig.jwt = JitsiUtils.generateJitsiToken(jitsiConfig.roomName, userInfo, {
                 maxParticipants: 2,
                 allowedParticipants: [
-                    appointment.doctor._id.toString(),
-                    appointment.patient._id.toString()
+                    appointment.provider._id.toString(),
+                    appointment.client._id.toString()
                 ]
             });
 
-            // Prepare response with consultation info
+            // Prepare response with session info
             res.status(200).json({
-                message: 'Joined consultation successfully',
-                consultation: {
+                message: 'Joined session successfully',
+                session: {
                     appointmentId: appointment._id,
                     type: appointment.type,
-                    doctor: {
-                        id: appointment.doctor._id,
-                        name: `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}`,
-                        profilePicture: appointment.doctor.profilePicture,
-                        specializations: appointment.doctor.specializations
+                    provider: {
+                        id: appointment.provider._id,
+                        name: `Dr. ${appointment.provider.firstName} ${appointment.provider.lastName}`,
+                        profilePicture: appointment.provider.profilePicture,
+                        expertise: appointment.provider.expertise
                     },
-                    patient: {
-                        id: appointment.patient._id,
-                        name: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
-                        profilePicture: appointment.patient.profilePicture,
-                        dateOfBirth: appointment.patient.dateOfBirth
+                    client: {
+                        id: appointment.client._id,
+                        name: `${appointment.client.firstName} ${appointment.client.lastName}`,
+                        profilePicture: appointment.client.profilePicture,
+                        dateOfBirth: appointment.client.dateOfBirth
                     },
                     dateTime: appointment.dateTime,
                     endTime: appointment.endTime,
-                    reasonForVisit: appointment.reasonForVisit,
-                    userRole: isDoctor ? 'doctor' : 'patient',
+                    purpose: appointment.purpose,
+                    userRole: isProvider ? 'provider' : 'client',
                     jitsi: jitsiConfig
                 }
             });
         } catch (error) {
-            console.error('Error joining consultation:', error);
-            res.status(500).json({ message: 'An error occurred while joining the consultation' });
+            console.error('Error joining session:', error);
+            res.status(500).json({ message: 'An error occurred while joining the session' });
         }
     };
 
     /**
-     * End a consultation (doctor only)
+     * End a session (provider only)
      * @param {Object} req - Express request object
      * @param {Object} res - Express response object
      */
-    endConsultation = async (req, res) => {
+    endSession = async (req, res) => {
         try {
             const { appointmentId } = req.params;
-            const { consultationSummary, chatLog } = req.body;
+            const { sessionSummary, chatLog } = req.body;
 
             if (!appointmentId) {
                 return res.status(400).json({ message: 'Appointment ID is required' });
@@ -171,22 +171,22 @@ class ConsultationController {
                 return res.status(404).json({ message: 'Appointment not found' });
             }
 
-            // Only doctor or admin can end consultation
-            if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
-                return res.status(403).json({ message: 'Only doctors can end consultations' });
+            // Only provider or admin can end session
+            if (req.user.role !== 'provider' && req.user.role !== 'admin') {
+                return res.status(403).json({ message: 'Only providers can end sessions' });
             }
 
-            // Doctor must be assigned to the appointment
-            if (req.user.role === 'doctor' && appointment.doctor.toString() !== req.user.id) {
-                return res.status(403).json({ message: 'You are not the doctor for this appointment' });
+            // Provider must be assigned to the appointment
+            if (req.user.role === 'provider' && appointment.provider.toString() !== req.user.id) {
+                return res.status(403).json({ message: 'You are not the provider for this appointment' });
             }
 
             // Update appointment status
             appointment.status = 'completed';
 
-            // Add consultation summary if provided
-            if (consultationSummary) {
-                appointment.consultationSummary = consultationSummary;
+            // Add session summary if provided
+            if (sessionSummary) {
+                appointment.sessionSummary = sessionSummary;
             }
 
             // Save chat log if provided
@@ -200,31 +200,31 @@ class ConsultationController {
             await NotificationService.sendAppointmentCompletionNotification(appointment);
 
             res.status(200).json({
-                message: 'Consultation ended successfully',
+                message: 'Session ended successfully',
                 appointment
             });
         } catch (error) {
-            console.error('Error ending consultation:', error);
-            res.status(500).json({ message: 'An error occurred while ending the consultation' });
+            console.error('Error ending session:', error);
+            res.status(500).json({ message: 'An error occurred while ending the session' });
         }
     };
 
     /**
-     * Add prescriptions to a completed appointment
+     * Add recommendations to a completed appointment
      * @param {Object} req - Express request object
      * @param {Object} res - Express response object
      */
-    addPrescriptions = async (req, res) => {
+    addRecommendations = async (req, res) => {
         try {
             const { appointmentId } = req.params;
-            const { prescriptions } = req.body;
+            const { recommendations } = req.body;
 
             if (!appointmentId) {
                 return res.status(400).json({ message: 'Appointment ID is required' });
             }
 
-            if (!prescriptions || !Array.isArray(prescriptions) || prescriptions.length === 0) {
-                return res.status(400).json({ message: 'Valid prescriptions array is required' });
+            if (!recommendations || !Array.isArray(recommendations) || recommendations.length === 0) {
+                return res.status(400).json({ message: 'Valid recommendations array is required' });
             }
 
             // Find appointment
@@ -234,39 +234,39 @@ class ConsultationController {
                 return res.status(404).json({ message: 'Appointment not found' });
             }
 
-            // Only doctor or admin can add prescriptions
-            if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
-                return res.status(403).json({ message: 'Only doctors can add prescriptions' });
+            // Only provider or admin can add recommendations
+            if (req.user.role !== 'provider' && req.user.role !== 'admin') {
+                return res.status(403).json({ message: 'Only providers can add recommendations' });
             }
 
-            // Doctor must be assigned to the appointment
-            if (req.user.role === 'doctor' && appointment.doctor.toString() !== req.user.id) {
-                return res.status(403).json({ message: 'You are not the doctor for this appointment' });
+            // Provider must be assigned to the appointment
+            if (req.user.role === 'provider' && appointment.provider.toString() !== req.user.id) {
+                return res.status(403).json({ message: 'You are not the provider for this appointment' });
             }
 
             // Validate prescription data
-            const validPrescriptions = prescriptions.filter(prescription => {
+            const validRecommendations = recommendations.filter(prescription => {
                 return prescription.medication && prescription.dosage && prescription.frequency && prescription.duration;
             });
 
-            if (validPrescriptions.length === 0) {
-                return res.status(400).json({ message: 'No valid prescriptions provided' });
+            if (validRecommendations.length === 0) {
+                return res.status(400).json({ message: 'No valid recommendations provided' });
             }
 
-            // Add prescriptions to appointment
-            appointment.prescriptions = validPrescriptions;
+            // Add recommendations to appointment
+            appointment.recommendations = validRecommendations;
             await appointment.save();
 
             // Send prescription notification
             await NotificationService.sendPrescriptionNotification(appointment);
 
             res.status(200).json({
-                message: 'Prescriptions added successfully',
-                prescriptions: appointment.prescriptions
+                message: 'Recommendations added successfully',
+                recommendations: appointment.recommendations
             });
         } catch (error) {
-            console.error('Error adding prescriptions:', error);
-            res.status(500).json({ message: 'An error occurred while adding prescriptions' });
+            console.error('Error adding recommendations:', error);
+            res.status(500).json({ message: 'An error occurred while adding recommendations' });
         }
     };
 
@@ -297,21 +297,21 @@ class ConsultationController {
 
             // Find the original appointment
             const originalAppointment = await Appointment.findById(appointmentId)
-                .populate('doctor', 'firstName lastName consultationFee')
-                .populate('patient', 'firstName lastName');
+                .populate('provider', 'firstName lastName sessionFee')
+                .populate('client', 'firstName lastName');
 
             if (!originalAppointment) {
                 return res.status(404).json({ message: 'Original appointment not found' });
             }
 
-            // Only doctor or admin can create follow-up
-            if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
-                return res.status(403).json({ message: 'Only doctors can create follow-up appointments' });
+            // Only provider or admin can create follow-up
+            if (req.user.role !== 'provider' && req.user.role !== 'admin') {
+                return res.status(403).json({ message: 'Only providers can create follow-up appointments' });
             }
 
-            // Doctor must be assigned to the appointment
-            if (req.user.role === 'doctor' && originalAppointment.doctor._id.toString() !== req.user.id) {
-                return res.status(403).json({ message: 'You are not the doctor for this appointment' });
+            // Provider must be assigned to the appointment
+            if (req.user.role === 'provider' && originalAppointment.provider._id.toString() !== req.user.id.toString()) {
+                return res.status(403).json({ message: 'You are not the provider for this appointment' });
             }
 
             // Update original appointment with follow-up recommendation
@@ -324,21 +324,21 @@ class ConsultationController {
 
             // Create new follow-up appointment with 'pending-payment' status
             const followUpAppointment = new Appointment({
-                patient: originalAppointment.patient._id,
-                doctor: originalAppointment.doctor._id,
+                client: originalAppointment.client._id,
+                provider: originalAppointment.provider._id,
                 dateTime: followUpDateObj,
                 type: originalAppointment.type,
-                reasonForVisit: `Follow-up to appointment on ${new Date(originalAppointment.dateTime).toLocaleDateString()} - ${notes || 'No notes provided'}`,
+                purpose: `Follow-up to appointment on ${new Date(originalAppointment.dateTime).toLocaleDateString()} - ${notes || 'No notes provided'}`,
                 status: 'pending-payment', // Special status for follow-ups pending payment
                 payment: {
-                    amount: originalAppointment.doctor.consultationFee,
+                    amount: originalAppointment.provider.sessionFee,
                     status: 'pending'
                 }
             });
 
             await followUpAppointment.save();
 
-            // Notify patient about follow-up
+            // Notify client about follow-up
             await NotificationService.sendFollowUpNotification(followUpAppointment);
 
             res.status(201).json({
@@ -352,11 +352,11 @@ class ConsultationController {
     };
 
     /**
-     * Get consultation status
+     * Get session status
      * @param {Object} req - Express request object
      * @param {Object} res - Express response object
      */
-    getConsultationStatus = async (req, res) => {
+    getSessionStatus = async (req, res) => {
         try {
             const { appointmentId } = req.params;
 
@@ -378,13 +378,13 @@ class ConsultationController {
                 timestamp: new Date().toISOString()
             });
         } catch (error) {
-            console.error('Error getting consultation status:', error);
-            res.status(500).json({ message: 'An error occurred while checking consultation status' });
+            console.error('Error getting session status:', error);
+            res.status(500).json({ message: 'An error occurred while checking session status' });
         }
     };
 
     /**
-     * Save chat log from consultation
+     * Save chat log from session
      * @param {Object} req - Express request object
      * @param {Object} res - Express response object
      */
@@ -409,10 +409,10 @@ class ConsultationController {
             }
 
             // Check if user is involved in the appointment
-            const isDoctor = req.user.role === 'doctor' && appointment.doctor.toString() === req.user.id;
-            const isPatient = req.user.role === 'patient' && appointment.patient.toString() === req.user.id;
+            const isProvider = req.user.role === 'provider' && appointment.provider.toString() === req.user.id;
+            const isClient = req.user.role === 'client' && appointment.client.toString() === req.user.id;
 
-            if (!isDoctor && !isPatient && req.user.role !== 'admin') {
+            if (!isProvider && !isClient && req.user.role !== 'admin') {
                 return res.status(403).json({ message: 'You are not authorized to save chat logs for this appointment' });
             }
 
@@ -430,7 +430,7 @@ class ConsultationController {
     };
 
     /**
-     * Handle consultation room exit
+     * Handle session room exit
      * @param {Object} req - Express request object
      * @param {Object} res - Express response object
     */
@@ -469,12 +469,12 @@ class ConsultationController {
             };
 
             // Check if both participants have left
-            const doctorId = appointment.doctor.toString();
-            const patientId = appointment.patient.toString();
+            const providerId = appointment.provider.toString();
+            const clientId = appointment.client.toString();
 
             const bothParticipantsLeft =
-                appointment.participantStatus[doctorId]?.status === 'left' &&
-                appointment.participantStatus[patientId]?.status === 'left';
+                appointment.participantStatus[providerId]?.status === 'left' &&
+                appointment.participantStatus[clientId]?.status === 'left';
 
             // If both have left and at least 10 minutes have passed since appointment start time
             const appointmentStartTime = new Date(appointment.dateTime);
@@ -485,15 +485,15 @@ class ConsultationController {
                 // Auto-complete the appointment
                 appointment.status = 'completed';
 
-                // Add default consultation summary if none exists
-                if (!appointment.consultationSummary) {
-                    appointment.consultationSummary = 'This consultation was automatically marked as completed when both participants left the session.';
+                // Add default session summary if none exists
+                if (!appointment.sessionSummary) {
+                    appointment.sessionSummary = 'This session was automatically marked as completed when both participants left the session.';
                 }
 
                 // Send notification
-                await NotificationService.sendConsultationCompletedNotification(appointment);
+                await NotificationService.sendSessionCompletedNotification(appointment);
 
-                console.log(`Auto-completed consultation ${appointment._id} after both participants left the room`);
+                console.log(`Auto-completed session ${appointment._id} after both participants left the room`);
             }
 
             await appointment.save();
@@ -510,63 +510,63 @@ class ConsultationController {
     }
 
     /**
-     * Update consultation summary and add new prescriptions
+     * Update session summary and add new recommendations
      * @param {Object} req - Express request object
      * @param {Object} res - Express response object
     */
-    updateConsultationResults = async (req, res) => {
+    updateSessionResults = async (req, res) => {
         try {
             const { id } = req.params;
-            const { consultationSummary, prescriptions, followUp } = req.body;
-            const doctorId = req.user.id;
+            const { sessionSummary, recommendations, followUp } = req.body;
+            const providerId = req.user.id;
 
             // Find the appointment
             const appointment = await Appointment.findById(id)
-                .populate('patient', 'firstName lastName email telegramId')
-                .populate('doctor', 'firstName lastName email telegramId');
+                .populate('client', 'firstName lastName email telegramId')
+                .populate('provider', 'firstName lastName email telegramId');
 
             if (!appointment) {
                 return res.status(404).json({ message: 'Appointment not found' });
             }
 
-            // Verify doctor is assigned to this appointment
-            if (appointment.doctor._id.toString() !== doctorId) {
-                return res.status(403).json({ message: 'You are not authorized to update this consultation' });
+            // Verify provider is assigned to this appointment
+            if (appointment.provider._id.toString() !== providerId.toString()) {
+                return res.status(403).json({ message: 'You are not authorized to update this session' });
             }
 
             // Verify appointment is completed
             if (appointment.status !== 'completed') {
-                return res.status(400).json({ message: 'Can only update completed consultations' });
+                return res.status(400).json({ message: 'Can only update completed sessions' });
             }
 
-            // Update consultation summary if provided
-            if (consultationSummary) {
-                appointment.consultationSummary = consultationSummary;
+            // Update session summary if provided
+            if (sessionSummary) {
+                appointment.sessionSummary = sessionSummary;
             }
 
-            // Add new prescriptions if provided (don't replace existing ones)
-            if (prescriptions && Array.isArray(prescriptions) && prescriptions.length > 0) {
-                // Filter out invalid prescriptions
-                const validPrescriptions = prescriptions.filter(prescription => {
+            // Add new recommendations if provided (don't replace existing ones)
+            if (recommendations && Array.isArray(recommendations) && recommendations.length > 0) {
+                // Filter out invalid recommendations
+                const validRecommendations = recommendations.filter(prescription => {
                     return prescription.medication && prescription.dosage &&
                         prescription.frequency && prescription.duration;
                 });
 
                 // Add timestamp to each new prescription
-                const timestampedPrescriptions = validPrescriptions.map(prescription => ({
+                const timestampedRecommendations = validRecommendations.map(prescription => ({
                     ...prescription,
                     createdAt: Date.now()
                 }));
 
-                // If appointment already has prescriptions, append new ones
-                if (appointment.prescriptions && Array.isArray(appointment.prescriptions)) {
-                    appointment.prescriptions = [...appointment.prescriptions, ...timestampedPrescriptions];
+                // If appointment already has recommendations, append new ones
+                if (appointment.recommendations && Array.isArray(appointment.recommendations)) {
+                    appointment.recommendations = [...appointment.recommendations, ...timestampedRecommendations];
                 } else {
-                    appointment.prescriptions = timestampedPrescriptions;
+                    appointment.recommendations = timestampedRecommendations;
                 }
 
                 // Send prescription notification
-                if (timestampedPrescriptions.length > 0) {
+                if (timestampedRecommendations.length > 0) {
                     await NotificationService.sendPrescriptionNotification(appointment);
                 }
             }
@@ -588,16 +588,16 @@ class ConsultationController {
 
                     // Create a new appointment for the follow-up with pending-payment status
                     const followUpAppointment = new Appointment({
-                        patient: appointment.patient._id,
-                        doctor: appointment.doctor._id,
+                        client: appointment.client._id,
+                        provider: appointment.provider._id,
                         dateTime: followUpDateObj,
                         endTime: endTime,
                         duration: duration,
                         type: appointment.type,
-                        reasonForVisit: `Follow-up to appointment on ${appointment.dateTime.toLocaleDateString()} - ${followUp.notes || 'No notes provided'}`,
+                        purpose: `Follow-up to appointment on ${appointment.dateTime.toLocaleDateString()} - ${followUp.notes || 'No notes provided'}`,
                         status: 'pending-payment',
                         payment: {
-                            amount: appointment.doctor.consultationFee,
+                            amount: appointment.provider.sessionFee,
                             status: 'pending'
                         }
                     });
@@ -613,15 +613,15 @@ class ConsultationController {
             await appointment.save();
 
             res.status(200).json({
-                message: 'Consultation results updated successfully',
+                message: 'Session results updated successfully',
                 appointment
             });
 
         } catch (error) {
-            console.error('Error updating consultation results:', error);
-            res.status(500).json({ message: 'An error occurred while updating consultation results' });
+            console.error('Error updating session results:', error);
+            res.status(500).json({ message: 'An error occurred while updating session results' });
         }
     }
 }
 
-module.exports = ConsultationController;
+module.exports = SessionController;

@@ -6,8 +6,8 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <h1 class="text-xl font-bold text-gray-900">
-                            Consultation with {{ consultation?.patient?.name ||
-                                consultation?.doctor?.name }}
+                            Session with {{ session?.client?.name ||
+                                session?.provider?.name }}
                         </h1>
                         <span class="ml-4 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium" :class="{
                             'bg-green-100 text-green-800': isConnected,
@@ -16,8 +16,8 @@
                             {{ isConnected ? 'Connected' : 'Connecting...' }}
                         </span>
                     </div>
-                    <button class="btn-secondary text-red-600 hover:text-red-700" @click="showEndConsultationConfirm">
-                        End Consultation
+                    <button class="btn-secondary text-red-600 hover:text-red-700" @click="showEndSessionConfirm">
+                        End Session
                     </button>
                 </div>
             </div>
@@ -34,56 +34,56 @@
             </div>
         </main>
 
-        <!-- End Consultation Confirmation Modal -->
+        <!-- End Session Confirmation Modal -->
         <div v-if="showEndConfirmation"
             class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
             <div class="bg-white rounded-lg overflow-hidden shadow-xl max-w-md w-full mx-4">
                 <div class="p-6">
-                    <h3 class="text-lg font-medium text-gray-900">End Consultation</h3>
+                    <h3 class="text-lg font-medium text-gray-900">End Session</h3>
                     <p class="mt-2 text-sm text-gray-500">
-                        Are you sure you want to end this consultation?
-                        {{ isDoctor ? 'You\'ll be asked to provide a summary and prescriptions.' : '' }}
+                        Are you sure you want to end this session?
+                        {{ isProvider ? 'You\'ll be asked to provide a summary and recommendations.' : '' }}
                     </p>
                     <div class="mt-4 flex justify-end space-x-3">
                         <button @click="showEndConfirmation = false" class="btn-secondary">
                             Cancel
                         </button>
-                        <button @click="confirmEndConsultation" class="btn-primary bg-red-600 hover:bg-red-700">
-                            End Consultation
+                        <button @click="confirmEndSession" class="btn-primary bg-red-600 hover:bg-red-700">
+                            End Session
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Post-Consultation Form for Doctors -->
-        <div v-if="showPostConsultationForm && isDoctor"
+        <!-- Post-Session Form for Providers -->
+        <div v-if="showPostSessionForm && isProvider"
             class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
             <div class="bg-white rounded-lg overflow-hidden shadow-xl max-w-4xl w-full mx-4 my-8">
                 <div class="p-6 max-h-[90vh] overflow-y-auto">
-                    <h3 class="text-xl font-bold text-gray-900 mb-4">Consultation Summary</h3>
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Session Summary</h3>
 
-                    <form @submit.prevent="submitPostConsultationForm">
-                        <!-- Consultation Summary -->
+                    <form @submit.prevent="submitPostSessionForm">
+                        <!-- Session Summary -->
                         <div class="mb-6">
-                            <label for="consultationSummary" class="block text-sm font-medium text-gray-700 mb-1">
-                                Consultation Summary
+                            <label for="sessionSummary" class="block text-sm font-medium text-gray-700 mb-1">
+                                Session Summary
                             </label>
-                            <textarea id="consultationSummary" v-model="postConsultationData.consultationSummary"
+                            <textarea id="sessionSummary" v-model="postSessionData.sessionSummary"
                                 rows="4" class="input w-full" required></textarea>
                         </div>
 
-                        <!-- Prescriptions -->
+                        <!-- Recommendations -->
                         <div class="mb-6">
                             <div class="flex justify-between items-center mb-2">
-                                <h4 class="text-lg font-medium text-gray-900">Prescriptions</h4>
+                                <h4 class="text-lg font-medium text-gray-900">Recommendations</h4>
                                 <button type="button" @click="addPrescription"
-                                    class="text-sm text-indigo-600 hover:text-indigo-900">
+                                    class="text-sm bg-gradient-to-r from-medical-blue to-medical-teal bg-clip-text text-transparent  hover:text-indigo-900">
                                     + Add Prescription
                                 </button>
                             </div>
 
-                            <div v-for="(prescription, index) in postConsultationData.prescriptions" :key="index"
+                            <div v-for="(prescription, index) in postSessionData.recommendations" :key="index"
                                 class="bg-gray-50 p-4 rounded-lg mb-3">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                                     <div>
@@ -135,34 +135,34 @@
                                 </button>
                             </div>
 
-                            <div v-if="postConsultationData.prescriptions.length === 0"
+                            <div v-if="postSessionData.recommendations.length === 0"
                                 class="bg-gray-50 p-4 rounded-lg text-center text-gray-500">
-                                No prescriptions added. Click "Add Prescription" to add one.
+                                No recommendations added. Click "Add Prescription" to add one.
                             </div>
                         </div>
 
                         <!-- Follow-up Recommendation -->
                         <div class="mb-6">
                             <div class="flex items-center mb-2">
-                                <input id="followUpRecommended" v-model="postConsultationData.followUp.recommended"
-                                    type="checkbox" class="h-4 w-4 text-indigo-600 rounded" />
+                                <input id="followUpRecommended" v-model="postSessionData.followUp.recommended"
+                                    type="checkbox" class="h-4 w-4 bg-gradient-to-r from-medical-blue to-medical-teal bg-clip-text text-transparent  rounded" />
                                 <label for="followUpRecommended" class="ml-2 block text-sm font-medium text-gray-700">
                                     Recommend Follow-up Appointment
                                 </label>
                             </div>
 
-                            <div v-if="postConsultationData.followUp.recommended" class="ml-6 mt-3">
+                            <div v-if="postSessionData.followUp.recommended" class="ml-6 mt-3">
                                 <label for="followUpDate" class="block text-sm font-medium text-gray-700 mb-1">
                                     Recommended Follow-up Date
                                 </label>
-                                <input id="followUpDate" v-model="postConsultationData.followUp.date" type="date"
+                                <input id="followUpDate" v-model="postSessionData.followUp.date" type="date"
                                     class="input w-full" :min="minFollowUpDate" required />
 
                                 <div class="mt-3">
                                     <label for="followUpNotes" class="block text-sm font-medium text-gray-700 mb-1">
                                         Follow-up Notes
                                     </label>
-                                    <textarea id="followUpNotes" v-model="postConsultationData.followUp.notes" rows="2"
+                                    <textarea id="followUpNotes" v-model="postSessionData.followUp.notes" rows="2"
                                         class="input w-full"></textarea>
                                 </div>
                             </div>
@@ -180,11 +180,11 @@
                         </div>
 
                         <div class="mt-6 flex justify-end space-x-3">
-                            <button type="button" @click="skipPostConsultation" class="btn-secondary">
+                            <button type="button" @click="skipPostSession" class="btn-secondary">
                                 Skip
                             </button>
                             <button type="submit" class="btn-primary" :disabled="submitting">
-                                {{ submitting ? 'Saving...' : 'Save and End Consultation' }}
+                                {{ submitting ? 'Saving...' : 'Save and End Session' }}
                             </button>
                         </div>
                     </form>
@@ -208,7 +208,7 @@
                     <h3 class="text-lg font-medium text-gray-900 text-center">Follow-up Appointment Created</h3>
                     <p class="mt-2 text-sm text-gray-500 text-center">
                         A follow-up appointment has been created and is now pending payment.
-                        The patient will need to pay to confirm the appointment.
+                        The client will need to pay to confirm the appointment.
                     </p>
                     <div class="mt-4 flex justify-center">
                         <button @click="returnToAppointments" class="btn-primary">
@@ -233,20 +233,20 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const isConnected = ref(false)
-const consultation = ref(null)
+const session = ref(null)
 const api = ref(null)
 const chatLog = ref([])
 const submitting = ref(false)
 
 // Modal states
 const showEndConfirmation = ref(false)
-const showPostConsultationForm = ref(false)
+const showPostSessionForm = ref(false)
 const showFollowUpNotification = ref(false)
 
-// Post-consultation form data
-const postConsultationData = reactive({
-    consultationSummary: '',
-    prescriptions: [],
+// Post-session form data
+const postSessionData = reactive({
+    sessionSummary: '',
+    recommendations: [],
     followUp: {
         recommended: false,
         date: '',
@@ -254,7 +254,7 @@ const postConsultationData = reactive({
     }
 })
 
-const isDoctor = computed(() => authStore.isDoctor)
+const isProvider = computed(() => authStore.isProvider)
 
 const minFollowUpDate = computed(() => {
     const tomorrow = addDays(new Date(), 1)
@@ -280,7 +280,7 @@ function loadJitsiScript() {
 
 async function initializeJitsi() {
     try {
-        if (!consultation.value?.jitsi) {
+        if (!session.value?.jitsi) {
             throw new Error('Jitsi configuration not available')
         }
 
@@ -291,7 +291,7 @@ async function initializeJitsi() {
             throw new Error('Jitsi Meet External API not loaded')
         }
 
-        const { domain, roomName, token } = consultation.value.jitsi
+        const { domain, roomName, token } = session.value.jitsi
 
         // Configure Jitsi options
         const options = {
@@ -319,7 +319,7 @@ async function initializeJitsi() {
                 ]
             },
             userInfo: {
-                displayName: authStore.isDoctor ?
+                displayName: authStore.isProvider ?
                     `Dr. ${authStore.user.firstName} ${authStore.user.lastName}` :
                     `${authStore.user.firstName} ${authStore.user.lastName}`
             }
@@ -334,10 +334,10 @@ async function initializeJitsi() {
         })
 
         api.value.on('videoConferenceLeft', () => {
-            if (isDoctor.value) {
-                // If doctor hasn't completed the form yet, show it
-                if (!showPostConsultationForm.value) {
-                    showPostConsultationForm.value = true
+            if (isProvider.value) {
+                // If provider hasn't completed the form yet, show it
+                if (!showPostSessionForm.value) {
+                    showPostSessionForm.value = true
                 }
             } else {
                 router.push({ name: 'appointment-details', params: { id: route.params.appointmentId } })
@@ -360,11 +360,11 @@ async function initializeJitsi() {
     }
 }
 
-function showEndConsultationConfirm() {
+function showEndSessionConfirm() {
     showEndConfirmation.value = true
 }
 
-function confirmEndConsultation() {
+function confirmEndSession() {
     showEndConfirmation.value = false
 
     // Dispose Jitsi API 
@@ -386,15 +386,15 @@ function confirmEndConsultation() {
         api.value.dispose()
     }
 
-    if (isDoctor.value) {
-        showPostConsultationForm.value = true
+    if (isProvider.value) {
+        showPostSessionForm.value = true
     } else {
         router.push({ name: 'appointment-details', params: { id: route.params.appointmentId } })
     }
 }
 
 function addPrescription() {
-    postConsultationData.prescriptions.push({
+    postSessionData.recommendations.push({
         medication: '',
         dosage: '',
         frequency: '',
@@ -404,68 +404,68 @@ function addPrescription() {
 }
 
 function removePrescription(index) {
-    postConsultationData.prescriptions.splice(index, 1)
+    postSessionData.recommendations.splice(index, 1)
 }
 
-async function submitPostConsultationForm() {
+async function submitPostSessionForm() {
     try {
         submitting.value = true
 
-        // 1. Update appointment status to completed and add consultation summary
+        // 1. Update appointment status to completed and add session summary
         await axios.patch(`/api/appointments/${route.params.appointmentId}/status`, {
             status: 'completed',
-            consultationSummary: postConsultationData.consultationSummary
+            sessionSummary: postSessionData.sessionSummary
         })
 
-        // 2. Add prescriptions if any
-        if (postConsultationData.prescriptions.length > 0) {
-            await axios.patch(`/api/appointments/${route.params.appointmentId}/prescriptions`, {
-                prescriptions: postConsultationData.prescriptions
+        // 2. Add recommendations if any
+        if (postSessionData.recommendations.length > 0) {
+            await axios.patch(`/api/appointments/${route.params.appointmentId}/recommendations`, {
+                recommendations: postSessionData.recommendations
             })
         }
 
         // 3. Schedule follow-up if recommended
-        if (postConsultationData.followUp.recommended) {
+        if (postSessionData.followUp.recommended) {
             await axios.post(`/api/appointments/${route.params.appointmentId}/follow-up`, {
-                followUpDate: postConsultationData.followUp.date,
-                notes: postConsultationData.followUp.notes
+                followUpDate: postSessionData.followUp.date,
+                notes: postSessionData.followUp.notes
             })
 
             // Show follow-up notification
-            showPostConsultationForm.value = false
+            showPostSessionForm.value = false
             showFollowUpNotification.value = true
         } else {
             returnToAppointments()
         }
     } catch (error) {
-        console.error('Error submitting post-consultation data:', error)
-        alert('An error occurred while saving the consultation data. Please try again.')
+        console.error('Error submitting post-session data:', error)
+        alert('An error occurred while saving the session data. Please try again.')
     } finally {
         submitting.value = false
     }
 }
 
-function skipPostConsultation() {
-    // Just end the consultation without saving any data
-    router.push({ name: 'doctor-appointments' })
+function skipPostSession() {
+    // Just end the session without saving any data
+    router.push({ name: 'provider-appointments' })
 }
 
 function returnToAppointments() {
-    router.push(isDoctor.value ?
-        { name: 'doctor-appointments' } :
-        { name: 'patient-appointments' }
+    router.push(isProvider.value ?
+        { name: 'provider-appointments' } :
+        { name: 'client-appointments' }
     )
 }
 
 onMounted(async () => {
     try {
-        // Get consultation details
-        const response = await axios.get(`/api/consultations/${route.params.appointmentId}/join`)
-        consultation.value = response.data.consultation
+        // Get session details
+        const response = await axios.get(`/api/sessions/${route.params.appointmentId}/join`)
+        session.value = response.data.session
 
         await initializeJitsi()
     } catch (error) {
-        console.error('Error joining consultation:', error)
+        console.error('Error joining session:', error)
         router.push({ name: 'appointment-details', params: { id: route.params.appointmentId } })
     }
 })

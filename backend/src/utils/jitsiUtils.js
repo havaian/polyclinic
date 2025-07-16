@@ -48,7 +48,7 @@ class JitsiUtils {
     }
 
     /**
-     * Generate a unique room name for a consultation
+     * Generate a unique room name for a session
      * @param {String} appointmentId - Appointment ID
      * @returns {String} Room name
      */
@@ -68,7 +68,7 @@ class JitsiUtils {
     }
 
     /**
-     * Generate Jitsi configuration for a consultation
+     * Generate Jitsi configuration for a session
      * @param {String} appointmentId - Appointment ID
      * @param {Object} user - User object with id, name, and role
      * @returns {Object} Jitsi configuration

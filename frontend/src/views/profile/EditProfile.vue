@@ -41,20 +41,20 @@
                         </div>
                     </div>
 
-                    <!-- Doctor-specific fields -->
-                    <template v-if="authStore.isDoctor">
+                    <!-- Provider-specific fields -->
+                    <template v-if="authStore.isProvider">
                         <div>
                             <h2 class="text-lg font-medium text-gray-900 mb-4">Professional Information</h2>
 
-                            <!-- Specializations -->
+                            <!-- Expertise -->
                             <div class="mb-4">
-                                <label class="label">Specializations</label>
+                                <label class="label">Expertise</label>
                                 <div class="space-y-2">
-                                    <div v-for="(spec, index) in formData.specializations" :key="index"
+                                    <div v-for="(spec, index) in formData.expertise" :key="index"
                                         class="flex gap-2">
-                                        <select v-model="formData.specializations[index]" class="input flex-1">
+                                        <select v-model="formData.expertise[index]" class="input flex-1">
                                             <option value="">Select Specialization</option>
-                                            <option v-for="spec in availableSpecializations" :key="spec" :value="spec">{{ spec }}
+                                            <option v-for="spec in availableExpertise" :key="spec" :value="spec">{{ spec }}
                                             </option>
                                         </select>
                                         <button type="button" @click="removeSpecialization(index)"
@@ -63,7 +63,7 @@
                                         </button>
                                     </div>
                                     <button type="button" @click="addSpecialization"
-                                        class="text-sm text-indigo-600 hover:text-indigo-800">
+                                        class="text-sm bg-gradient-to-r from-medical-blue to-medical-teal bg-clip-text text-transparent  hover:text-indigo-800">
                                         + Add Another Specialization
                                     </button>
                                 </div>
@@ -88,7 +88,7 @@
                                         </div>
                                     </div>
                                     <button type="button" @click="addEducation"
-                                        class="text-sm text-indigo-600 hover:text-indigo-800">
+                                        class="text-sm bg-gradient-to-r from-medical-blue to-medical-teal bg-clip-text text-transparent  hover:text-indigo-800">
                                         + Add Education
                                     </button>
                                 </div>
@@ -114,7 +114,7 @@
                                         </div>
                                     </div>
                                     <button type="button" @click="addCertification"
-                                        class="text-sm text-indigo-600 hover:text-indigo-800">
+                                        class="text-sm bg-gradient-to-r from-medical-blue to-medical-teal bg-clip-text text-transparent  hover:text-indigo-800">
                                         + Add Certification
                                     </button>
                                 </div>
@@ -122,8 +122,8 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label for="consultationFee" class="label">Consultation Fee (UZS)</label>
-                                    <input id="consultationFee" v-model.number="formData.consultationFee" type="number"
+                                    <label for="sessionFee" class="label">Session Fee (UZS)</label>
+                                    <input id="sessionFee" v-model.number="formData.sessionFee" type="number"
                                         min="0" class="input mt-1" required />
                                 </div>
                                 <div>
@@ -164,7 +164,7 @@
                         </div>
                     </template>
 
-                    <!-- Patient-specific fields -->
+                    <!-- Client-specific fields -->
                     <template v-else>
                         <div>
                             <h2 class="text-lg font-medium text-gray-900 mb-4">Medical Information</h2>
@@ -205,7 +205,7 @@
                     </template>
 
                     <div class="flex justify-end space-x-4">
-                        <router-link :to="{ name: authStore.isDoctor ? 'doctor-profile' : 'patient-profile' }"
+                        <router-link :to="{ name: authStore.isProvider ? 'provider-profile' : 'client-profile' }"
                             class="btn-secondary">
                             Cancel
                         </router-link>
@@ -229,8 +229,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 const loading = ref(false)
 
-// Replace the hardcoded specializations with a ref to be filled from API
-const availableSpecializations = ref([])
+// Replace the hardcoded expertise with a ref to be filled from API
+const availableExpertise = ref([])
 
 const formData = reactive({
     firstName: '',
@@ -240,10 +240,10 @@ const formData = reactive({
         street: '',
         city: ''
     },
-    specializations: [],
+    expertise: [],
     education: [],
     certifications: [],
-    consultationFee: 0,
+    sessionFee: 0,
     experience: 0,
     languages: [],
     bio: '',
@@ -273,11 +273,11 @@ const conditionsInput = ref('')
 
 // Helper functions for arrays
 const addSpecialization = () => {
-    formData.specializations.push('')
+    formData.expertise.push('')
 }
 
 const removeSpecialization = (index) => {
-    formData.specializations.splice(index, 1)
+    formData.expertise.splice(index, 1)
 }
 
 const addEducation = () => {
@@ -301,25 +301,25 @@ const formatDay = (dayOfWeek) => {
     return days[dayOfWeek - 1]
 }
 
-// Added function to fetch specializations from the API
-async function fetchSpecializations() {
+// Added function to fetch expertise from the API
+async function fetchExpertise() {
     try {
-        const response = await axios.get('/api/specializations')
-        availableSpecializations.value = response.data.specializations.map(s => s.name)
+        const response = await axios.get('/api/expertise')
+        availableExpertise.value = response.data.expertise.map(s => s.name)
     } catch (error) {
-        console.error('Error fetching specializations:', error)
+        console.error('Error fetching expertise:', error)
         // Set some defaults in case API call fails
-        availableSpecializations.value = [
+        availableExpertise.value = [
             'Cardiology',
-            'Dermatology',
-            'Endocrinology',
-            'Family Medicine',
-            'Gastroenterology',
-            'Neurology',
-            'Obstetrics & Gynecology',
-            'Ophthalmology',
             'Pediatrics',
-            'Psychiatry'
+            'Dermatology',
+            'Neurology',
+            'Orthopedics',
+            'Gynecology',
+            'Psychiatry',
+            'Ophthalmology',
+            'General Medicine',
+            'Endocrinology'
         ]
     }
 }
@@ -335,15 +335,15 @@ async function fetchUserProfile() {
         formData.phone = user.phone
         formData.address = user.address || { street: '', city: '' }
 
-        if (authStore.isDoctor) {
-            // Handle specializations properly as an array
-            formData.specializations = Array.isArray(user.specializations) ? 
-                user.specializations : 
+        if (authStore.isProvider) {
+            // Handle expertise properly as an array
+            formData.expertise = Array.isArray(user.expertise) ? 
+                user.expertise : 
                 (user.specialization ? [user.specialization] : [])
                 
             formData.education = user.education || []
             formData.certifications = user.certifications || []
-            formData.consultationFee = user.consultationFee || 0
+            formData.sessionFee = user.sessionFee || 0
             formData.experience = user.experience || 0
             formData.languages = user.languages || []
             formData.bio = user.bio || ''
@@ -376,12 +376,12 @@ async function handleSubmit() {
             address: formData.address
         }
 
-        if (authStore.isDoctor) {
-            // Ensure specializations is an array of non-empty strings
-            updateData.specializations = formData.specializations.filter(Boolean)
+        if (authStore.isProvider) {
+            // Ensure expertise is an array of non-empty strings
+            updateData.expertise = formData.expertise.filter(Boolean)
             updateData.education = formData.education.filter(e => e.degree && e.institution && e.year)
             updateData.certifications = formData.certifications.filter(c => c.name && c.issuer && c.year)
-            updateData.consultationFee = formData.consultationFee
+            updateData.sessionFee = formData.sessionFee
             updateData.experience = formData.experience
             updateData.languages = languagesInput.value.split(',').map(lang => lang.trim()).filter(Boolean)
             updateData.bio = formData.bio
@@ -395,7 +395,7 @@ async function handleSubmit() {
         }
 
         await axios.patch('/api/users/me', updateData)
-        router.push({ name: authStore.isDoctor ? 'doctor-profile' : 'patient-profile' })
+        router.push({ name: authStore.isProvider ? 'provider-profile' : 'client-profile' })
     } catch (error) {
         console.error('Error updating profile:', error)
     } finally {
@@ -405,9 +405,9 @@ async function handleSubmit() {
 
 onMounted(() => {
     fetchUserProfile()
-    // Fetch specializations if user is a doctor
-    if (authStore.isDoctor) {
-        fetchSpecializations()
+    // Fetch expertise if user is a provider
+    if (authStore.isProvider) {
+        fetchExpertise()
     }
 })
 </script>

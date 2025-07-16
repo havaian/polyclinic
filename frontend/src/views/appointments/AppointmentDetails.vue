@@ -30,16 +30,16 @@
                     <!-- Participants -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Doctor</h3>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Provider</h3>
                             <div class="flex items-center space-x-4">
-                                <img :src="appointment.doctor.profilePicture || '/images/user-placeholder.jpg'"
-                                    :alt="appointment.doctor.firstName" class="h-12 w-12 rounded-full object-cover" />
+                                <img :src="appointment.provider.profilePicture || '/images/user-placeholder.jpg'"
+                                    :alt="appointment.provider.firstName" class="h-12 w-12 rounded-full object-cover" />
                                 <div>
                                     <p class="font-medium text-gray-900">
-                                        Dr. {{ appointment.doctor.firstName }} {{ appointment.doctor.lastName }}
+                                        Dr. {{ appointment.provider.firstName }} {{ appointment.provider.lastName }}
                                     </p>
                                     <div class="mt-2 flex flex-wrap gap-2">
-                                        <span v-for="spec in appointment.doctor.specializations" :key="spec"
+                                        <span v-for="spec in appointment.provider.expertise" :key="spec"
                                             class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                                             {{ spec }}
                                         </span>
@@ -49,16 +49,16 @@
                         </div>
 
                         <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Patient</h3>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Client</h3>
                             <div class="flex items-center space-x-4">
-                                <img :src="appointment.patient.profilePicture || '/images/user-placeholder.jpg'"
-                                    :alt="appointment.patient.firstName" class="h-12 w-12 rounded-full object-cover" />
+                                <img :src="appointment.client.profilePicture || '/images/user-placeholder.jpg'"
+                                    :alt="appointment.client.firstName" class="h-12 w-12 rounded-full object-cover" />
                                 <div>
                                     <p class="font-medium text-gray-900">
-                                        {{ appointment.patient.firstName }} {{ appointment.patient.lastName }}
+                                        {{ appointment.client.firstName }} {{ appointment.client.lastName }}
                                     </p>
                                     <p class="text-sm text-gray-500">
-                                        Age: {{ calculateAge(appointment.patient.dateOfBirth) }}
+                                        Age: {{ calculateAge(appointment.client.dateOfBirth) }}
                                     </p>
                                 </div>
                             </div>
@@ -73,7 +73,7 @@
                         </div>
 
                         <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Consultation Type</h3>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Session Type</h3>
                             <p class="text-gray-900">
                                 {{ appointment.type.charAt(0).toUpperCase() + appointment.type.slice(1) }}
                             </p>
@@ -83,23 +83,23 @@
                     <!-- Reason for Visit -->
                     <div>
                         <h3 class="text-lg font-medium text-gray-900 mb-4">Reason for Visit</h3>
-                        <p class="text-gray-900">{{ appointment.reasonForVisit }}</p>
+                        <p class="text-gray-900">{{ appointment.purpose }}</p>
                     </div>
 
-                    <!-- Consultation Summary (only for completed appointments) -->
-                    <div v-if="appointment.status === 'completed' && appointment.consultationSummary">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Consultation Summary</h3>
+                    <!-- Session Summary (only for completed appointments) -->
+                    <div v-if="appointment.status === 'completed' && appointment.sessionSummary">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Session Summary</h3>
                         <div class="bg-gray-50 p-4 rounded-lg">
-                            <p class="text-gray-900 whitespace-pre-line">{{ appointment.consultationSummary }}</p>
+                            <p class="text-gray-900 whitespace-pre-line">{{ appointment.sessionSummary }}</p>
                         </div>
                     </div>
 
-                    <!-- Prescriptions (only for completed appointments) -->
+                    <!-- Recommendations (only for completed appointments) -->
                     <div
-                        v-if="appointment.status === 'completed' && appointment.prescriptions && appointment.prescriptions.length > 0">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Prescriptions</h3>
+                        v-if="appointment.status === 'completed' && appointment.recommendations && appointment.recommendations.length > 0">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Recommendations</h3>
                         <div class="space-y-4">
-                            <div v-for="(prescription, index) in appointment.prescriptions" :key="index"
+                            <div v-for="(prescription, index) in appointment.recommendations" :key="index"
                                 class="bg-gray-50 p-4 rounded-lg">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -155,7 +155,7 @@
                                     </button>
                                 </div>
                             </div>
-                            <div v-else-if="authStore.isPatient && appointment.followUp.recommended" class="mt-4">
+                            <div v-else-if="authStore.isClient && appointment.followUp.recommended" class="mt-4">
                                 <button @click="findFollowUpAppointment" class="btn-primary text-sm">
                                     View Follow-up Details
                                 </button>
@@ -168,7 +168,7 @@
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-lg font-medium text-gray-900">Chat History</h3>
                             <button @click="showChatLog = !showChatLog"
-                                class="text-sm text-indigo-600 hover:text-indigo-900">
+                                class="text-sm bg-gradient-to-r from-medical-blue to-medical-teal bg-clip-text text-transparent  hover:text-indigo-900">
                                 {{ showChatLog ? 'Hide Chat' : 'Show Chat' }}
                             </button>
                         </div>
@@ -205,7 +205,7 @@
                         </div>
                     </div>
 
-                    <!-- Doctor-patient chat -->
+                    <!-- Provider-client chat -->
                     <div class="mt-8" v-if="canStartChat">
                         <h3 class="text-lg font-medium text-gray-900 mb-4">Communication</h3>
                         <div class="bg-gray-50 p-4 rounded-lg">
@@ -224,13 +224,13 @@
 
                     <!-- Actions -->
                     <div class="flex justify-end space-x-4">
-                        <button v-if="appointment.status === 'scheduled' && authStore.isPatient"
+                        <button v-if="appointment.status === 'scheduled' && authStore.isClient"
                             class="btn-secondary text-red-600 hover:text-red-700" @click="cancelAppointment">
                             Cancel Appointment
                         </button>
                         <button v-if="appointment.status === 'scheduled' && isWithinJoinWindow" class="btn-primary"
-                            @click="joinConsultation">
-                            {{ authStore.isDoctor ? 'Start Consultation' : 'Join Consultation' }}
+                            @click="joinSession">
+                            {{ authStore.isProvider ? 'Start Session' : 'Join Session' }}
                         </button>
                         <div v-if="showFollowUpModal"
                             class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
@@ -353,9 +353,9 @@ const isWithinJoinWindow = computed(() => {
 const canStartChat = computed(() => {
     if (!appointment.value) return false
 
-    const isParticipant = authStore.isDoctor ?
-        appointment.value.doctor._id === authStore.user._id :
-        appointment.value.patient._id === authStore.user._id
+    const isParticipant = authStore.isProvider ?
+        appointment.value.provider._id === authStore.user._id :
+        appointment.value.client._id === authStore.user._id
 
     const validStatus = ['scheduled', 'completed']
     return isParticipant && validStatus.includes(appointment.value.status)
@@ -364,9 +364,9 @@ const canStartChat = computed(() => {
 const getChatButtonText = computed(() => {
     if (!appointment.value) return ''
 
-    const otherParty = authStore.isDoctor ?
-        `${appointment.value.patient.firstName} ${appointment.value.patient.lastName}` :
-        `Dr. ${appointment.value.doctor.firstName} ${appointment.value.doctor.lastName}`
+    const otherParty = authStore.isProvider ?
+        `${appointment.value.client.firstName} ${appointment.value.client.lastName}` :
+        `Dr. ${appointment.value.provider.firstName} ${appointment.value.provider.lastName}`
 
     return `Chat with ${otherParty} about this appointment`
 })
@@ -392,14 +392,14 @@ async function fetchAppointment() {
 
 async function findFollowUpAppointment() {
     try {
-        // Get patient's pending-payment appointments
-        const response = await axios.get(`/api/appointments/patient/${authStore.user._id}/pending-followups`)
+        // Get client's pending-payment appointments
+        const response = await axios.get(`/api/appointments/client/${authStore.user._id}/pending-followups`)
 
         // Find follow-up for this appointment
         const followUps = response.data.appointments || []
         const followUp = followUps.find(app =>
-            app.reasonForVisit.includes(`Follow-up to appointment on`) &&
-            app.doctor._id === appointment.value.doctor._id)
+            app.purpose.includes(`Follow-up to appointment on`) &&
+            app.provider._id === appointment.value.provider._id)
 
         if (followUp) {
             followUpAppointment.value = followUp
@@ -422,22 +422,22 @@ async function cancelAppointment() {
     }
 }
 
-async function joinConsultation() {
+async function joinSession() {
     try {
-        const response = await axios.get(`/api/consultations/${appointment.value._id}/join`)
-        if (response.data.consultation) {
+        const response = await axios.get(`/api/sessions/${appointment.value._id}/join`)
+        if (response.data.session) {
             router.push({
-                name: 'consultation-room',
+                name: 'session-room',
                 params: { appointmentId: appointment.value._id }
             })
         }
     } catch (error) {
-        console.error('Error joining consultation:', error)
-        // If consultation is not ready yet, show the time remaining
+        console.error('Error joining session:', error)
+        // If session is not ready yet, show the time remaining
         if (error.response && error.response.data && error.response.data.startsInMinutes) {
-            alert(`This consultation will be available in ${error.response.data.startsInMinutes} minutes.`)
+            alert(`This session will be available in ${error.response.data.startsInMinutes} minutes.`)
         } else {
-            alert('Unable to join consultation at this time. Please try again later.')
+            alert('Unable to join session at this time. Please try again later.')
         }
     }
 }
@@ -454,9 +454,9 @@ async function proceedToPayment(appointmentId) {
 
 async function startChat() {
     try {
-        const participantId = authStore.isDoctor ?
-            appointment.value.patient._id :
-            appointment.value.doctor._id
+        const participantId = authStore.isProvider ?
+            appointment.value.client._id :
+            appointment.value.provider._id
 
         // Create or get existing conversation
         const response = await axios.post('/api/chat/conversations', {

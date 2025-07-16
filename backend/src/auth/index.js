@@ -174,7 +174,7 @@ exports.ensureOwnership = (paramIdField) => {
 
 /**
  * Middleware to handle appointment access
- * Only the involved patient, doctor, or an admin can access appointment details
+ * Only the involved client, provider, or an admin can access appointment details
  */
 exports.ensureAppointmentAccess = async (req, res, next) => {
     try {
@@ -195,10 +195,10 @@ exports.ensureAppointmentAccess = async (req, res, next) => {
 
         // Check if user is involved in the appointment
         const userId = req.user.id.toString();
-        const isDoctor = req.user.role === 'doctor' && appointment.doctor.toString() === userId;
-        const isPatient = req.user.role === 'patient' && appointment.patient.toString() === userId;
+        const isProvider = req.user.role === 'provider' && appointment.provider.toString() === userId;
+        const isClient = req.user.role === 'client' && appointment.client.toString() === userId;
 
-        if (!isDoctor && !isPatient) {
+        if (!isProvider && !isClient) {
             return res.status(403).json({
                 message: 'You are not authorized to access this appointment.'
             });
@@ -358,37 +358,19 @@ async function logContentViolation(userId, matches, content) {
 }
 
 /**
- * Middleware to check if a user is a doctor and registered by admin
- * Only admin can register doctors - rejects direct doctor registrations
+ * Middleware to check if a user is a provider and registered by admin
+ * Only admin can register providers - rejects direct provider registrations
  */
-exports.preventDoctorRegistration = (req, res, next) => {
-    // If user is trying to register as a doctor
-    if (req.body.role === 'doctor') {
-        // Only allow if the request is from an admin
-        if (!req.user || req.user.role !== 'admin') {
-            return res.status(403).json({
-                message: 'Doctor registration is only available through administrators. Please contact the clinic to register as a doctor.'
-            });
-        }
-    }
-
-    next();
-};
-
-/**
- * Middleware to check if a user is a doctor and registered by admin
- * Only admin can register doctors - rejects direct doctor registrations
- */
-exports.preventDoctorRegistration = (req, res, next) => {
-    // If user is trying to register as a doctor
-    if (req.body.role === 'doctor') {
-        // Only allow if the request is from an admin
-        if (!req.user || req.user.role !== 'admin') {
-            return res.status(403).json({
-                message: 'Doctor registration is only available through administrators. Please contact the clinic to register as a doctor.'
-            });
-        }
-    }
+exports.preventProviderRegistration = (req, res, next) => {
+    // // If user is trying to register as a provider
+    // if (req.body.role === 'provider') {
+    //     // Only allow if the request is from an admin
+    //     if (!req.user || req.user.role !== 'admin') {
+    //         return res.status(403).json({
+    //             message: 'Provider registration is only available through administrators. Please contact the clinic to register as a provider.'
+    //         });
+    //     }
+    // }
 
     next();
 };
@@ -397,23 +379,23 @@ exports.preventDoctorRegistration = (req, res, next) => {
  * Middleware to ensure terms are accepted during registration
  */
 exports.ensureTermsAccepted = (req, res, next) => {
-    // If it's a registration request
-    if (req.path.includes('/register') && req.method === 'POST') {
-        // Check if terms and privacy policy are accepted
-        const { termsAccepted, privacyPolicyAccepted } = req.body;
+    // // If it's a registration request
+    // if (req.path.includes('/register') && req.method === 'POST') {
+    //     // Check if terms and privacy policy are accepted
+    //     const { termsAccepted, privacyPolicyAccepted } = req.body;
 
-        if (!termsAccepted || !privacyPolicyAccepted) {
-            return res.status(400).json({
-                message: 'You must accept the Terms of Service and Privacy Policy to register.'
-            });
-        }
-    }
+    //     if (!termsAccepted || !privacyPolicyAccepted) {
+    //         return res.status(400).json({
+    //             message: 'You must accept the Terms of Service and Privacy Policy to register.'
+    //         });
+    //     }
+    // }
 
     next();
 };
 
 /**
- * Middleware to restrict chat during active video/audio consultations
+ * Middleware to restrict chat during active video/audio sessions
  */
 exports.restrictChatDuringCall = async (req, res, next) => {
     try {
@@ -441,7 +423,7 @@ exports.restrictChatDuringCall = async (req, res, next) => {
                 return next();
             }
 
-            // If appointment is active and is a video or audio consultation, restrict chat
+            // If appointment is active and is a video or audio session, restrict chat
             if (appointment.status === 'scheduled' &&
                 (appointment.type === 'video' || appointment.type === 'audio')) {
 
@@ -453,7 +435,7 @@ exports.restrictChatDuringCall = async (req, res, next) => {
                 // Check if we're currently within the appointment time
                 if (now >= appointmentTime && now <= appointmentEndTime) {
                     return res.status(403).json({
-                        message: 'Chat is restricted during active video or audio consultations. Please use the consultation interface for communication.'
+                        message: 'Chat is restricted during active video or audio sessions. Please use the session interface for communication.'
                     });
                 }
             }
@@ -474,7 +456,7 @@ exports.handleTextEncoding = (req, res, next) => {
     // Check if request has a body
     if (req.body) {
         // Process text fields that commonly have encoding issues
-        const fieldsToProcess = ['bio', 'reasonForVisit', 'consultationSummary', 'notes', 'text', 'comment'];
+        const fieldsToProcess = ['bio', 'purpose', 'sessionSummary', 'notes', 'text', 'comment'];
 
         for (const field of fieldsToProcess) {
             if (req.body[field] && typeof req.body[field] === 'string') {

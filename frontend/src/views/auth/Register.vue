@@ -33,8 +33,8 @@
                     <div>
                         <label for="role" class="label">I am a</label>
                         <select id="role" v-model="formData.role" class="input mt-1" required>
-                            <option value="patient">Patient</option>
-                            <option value="doctor">Doctor</option>
+                            <option value="client">Client</option>
+                            <option value="provider">Provider</option>
                         </select>
                     </div>
 
@@ -68,14 +68,14 @@
 
                     <!-- Removed: Date of Birth and Gender moved to conditional blocks -->
 
-                    <template v-if="formData.role === 'doctor'">
+                    <template v-if="formData.role === 'provider'">
                         <div>
-                            <label for="specializations" class="label">Specializations</label>
+                            <label for="expertise" class="label">Expertise</label>
                             <div class="space-y-2">
-                                <div v-for="(spec, index) in formData.specializations" :key="index" class="flex gap-2">
-                                    <select v-model="formData.specializations[index]" class="input flex-1">
+                                <div v-for="(spec, index) in formData.expertise" :key="index" class="flex gap-2">
+                                    <select v-model="formData.expertise[index]" class="input flex-1">
                                         <option value="">Select Specialization</option>
-                                        <option v-for="spec in availableSpecializations" :key="spec" :value="spec">
+                                        <option v-for="spec in availableExpertise" :key="spec" :value="spec">
                                             {{ spec }}
                                         </option>
                                     </select>
@@ -85,7 +85,7 @@
                                     </button>
                                 </div>
                                 <button type="button" @click="addSpecialization"
-                                    class="text-sm text-indigo-600 hover:text-indigo-800">
+                                    class="text-sm bg-gradient-to-r from-medical-blue to-medical-teal bg-clip-text text-transparent  hover:text-indigo-800">
                                     + Add Specialization
                                 </button>
                             </div>
@@ -104,8 +104,8 @@
                         </div>
 
                         <div>
-                            <label for="consultationFee" class="label">Consultation Fee (UZS)</label>
-                            <input id="consultationFee" v-model.number="formData.consultationFee" type="number" min="0"
+                            <label for="sessionFee" class="label">Session Fee (UZS)</label>
+                            <input id="sessionFee" v-model.number="formData.sessionFee" type="number" min="0"
                                 required class="input mt-1" />
                         </div>
 
@@ -116,15 +116,15 @@
                         </div>
                     </template>
 
-                    <!-- Date of Birth - Only for patients -->
-                    <div v-if="formData.role === 'patient'">
+                    <!-- Date of Birth - Only for clients -->
+                    <div v-if="formData.role === 'client'">
                         <label for="dateOfBirth" class="label">Date of Birth</label>
                         <input id="dateOfBirth" v-model="formData.dateOfBirth" type="date" required class="input mt-1"
                             :max="maxDate" />
                     </div>
 
-                    <!-- Gender - Only for patients -->
-                    <div v-if="formData.role === 'patient'">
+                    <!-- Gender - Only for clients -->
+                    <div v-if="formData.role === 'client'">
                         <label for="gender" class="label">Gender</label>
                         <select id="gender" v-model="formData.gender" class="input mt-1" required>
                             <option value="">Select gender</option>
@@ -145,7 +145,7 @@
 
             <p class="mt-2 text-center text-sm text-gray-600">
                 Already have an account?
-                <router-link to="/login" class="font-medium text-indigo-600 hover:text-indigo-500">
+                <router-link to="/login" class="font-medium bg-gradient-to-r from-medical-blue to-medical-teal bg-clip-text text-transparent  hover:text-indigo-500">
                     Sign in
                 </router-link>
             </p>
@@ -166,11 +166,11 @@ import axios from 'axios'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const availableSpecializations = ref([])
+const availableExpertise = ref([])
 const languagesInput = ref('')
 
 const formData = reactive({
-    role: 'patient',
+    role: 'client',
     firstName: '',
     lastName: '',
     email: '',
@@ -178,10 +178,10 @@ const formData = reactive({
     password: '',
     dateOfBirth: '',
     gender: '',
-    specializations: [],
+    expertise: [],
     licenseNumber: '',
     experience: 0,
-    consultationFee: 0
+    sessionFee: 0
 })
 
 const registrationSuccess = ref(false)
@@ -195,19 +195,19 @@ const maxDate = computed(() => {
     return date.toISOString().split('T')[0]
 })
 
-// Helper functions for specializations
+// Helper functions for expertise
 const addSpecialization = () => {
-    formData.specializations.push('')
+    formData.expertise.push('')
 }
 
 const removeSpecialization = (index) => {
-    formData.specializations.splice(index, 1)
+    formData.expertise.splice(index, 1)
 }
 
-// Add default empty specialization when switching to doctor role
+// Add default empty specialization when switching to provider role
 const watchRole = () => {
-    if (formData.role === 'doctor' && formData.specializations.length === 0) {
-        formData.specializations.push('')
+    if (formData.role === 'provider' && formData.expertise.length === 0) {
+        formData.expertise.push('')
     }
 }
 
@@ -219,26 +219,26 @@ async function handleSubmit() {
         // Create a copy of the formData to modify before sending
         const registrationData = { ...formData };
 
-        if (registrationData.role === 'doctor') {
-            // Make sure specializations is processed properly
-            registrationData.specializations = formData.specializations.filter(s => s !== "");
+        if (registrationData.role === 'provider') {
+            // Make sure expertise is processed properly
+            registrationData.expertise = formData.expertise.filter(s => s !== "");
 
-            // Process languages for doctor registration
+            // Process languages for provider registration
             if (languagesInput.value) {
                 registrationData.languages = languagesInput.value.split(',').map(lang => lang.trim()).filter(Boolean);
             } else {
                 registrationData.languages = [];
             }
 
-            // Remove patient-only fields for doctor registration
+            // Remove client-only fields for provider registration
             delete registrationData.dateOfBirth;
             delete registrationData.gender;
         } else {
-            // For patient registration, remove all doctor-specific fields
-            delete registrationData.specializations;
+            // For client registration, remove all provider-specific fields
+            delete registrationData.expertise;
             delete registrationData.licenseNumber;
             delete registrationData.experience;
-            delete registrationData.consultationFee;
+            delete registrationData.sessionFee;
             delete registrationData.languages;
         }
 
@@ -251,29 +251,29 @@ async function handleSubmit() {
     }
 }
 
-async function fetchSpecializations() {
+async function fetchExpertise() {
     try {
-        const response = await axios.get('/api/specializations')
-        availableSpecializations.value = response.data.specializations.map(s => s.name)
+        const response = await axios.get('/api/expertise')
+        availableExpertise.value = response.data.expertise.map(s => s.name)
     } catch (error) {
-        console.error('Error fetching specializations:', error)
+        console.error('Error fetching expertise:', error)
         // Set some defaults in case API call fails
-        availableSpecializations.value = [
+        availableExpertise.value = [
             'Cardiology',
-            'Dermatology',
-            'Endocrinology',
-            'Family Medicine',
-            'Gastroenterology',
-            'Neurology',
-            'Obstetrics & Gynecology',
-            'Ophthalmology',
             'Pediatrics',
-            'Psychiatry'
+            'Dermatology',
+            'Neurology',
+            'Orthopedics',
+            'Gynecology',
+            'Psychiatry',
+            'Ophthalmology',
+            'General Medicine',
+            'Endocrinology'
         ]
     }
 }
 
 onMounted(() => {
-    fetchSpecializations()
+    fetchExpertise()
 })
 </script>

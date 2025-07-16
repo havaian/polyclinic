@@ -9,12 +9,12 @@ router.post('/webhook', express.raw({ type: 'application/json' }), paymentContro
 /**
  * @route POST /api/payments/create-checkout
  * @desc Create a Stripe checkout session for payment
- * @access Private (patient or admin)
+ * @access Private (client or admin)
  */
 router.post(
     '/create-checkout',
     authenticateUser,
-    authorizeRoles(['patient', 'admin']),
+    authorizeRoles(['client', 'admin']),
     paymentController.createCheckoutSession
 );
 

@@ -4,13 +4,13 @@
       <!-- Profile Header -->
       <div class="p-6 sm:p-8 border-b border-gray-200">
         <div class="flex flex-col sm:flex-row items-center">
-          <img :src="user?.profilePicture || 'https://via.placeholder.com/150'" :alt="user?.firstName"
+          <img :src="user?.profilePicture || ''" :alt="user?.firstName"
             class="h-32 w-32 rounded-full object-cover" />
           <div class="mt-4 sm:mt-0 sm:ml-6 text-center sm:text-left">
             <h1 class="text-2xl font-bold text-gray-900">
               {{ user?.firstName }} {{ user?.lastName }}
             </h1>
-            <p class="text-gray-600">Patient</p>
+            <p class="text-gray-600">Client</p>
           </div>
         </div>
       </div>

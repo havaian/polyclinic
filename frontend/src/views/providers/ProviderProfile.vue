@@ -3,24 +3,24 @@
         <div v-if="loading" class="text-center py-8">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent">
             </div>
-            <p class="mt-2 text-gray-600">Loading doctor profile...</p>
+            <p class="mt-2 text-gray-600">Loading provider profile...</p>
         </div>
 
-        <template v-else-if="doctor">
+        <template v-else-if="provider">
             <div class="bg-white shadow rounded-lg overflow-hidden">
                 <!-- Header -->
                 <div class="p-6 sm:p-8 border-b border-gray-200">
                     <div class="flex flex-col sm:flex-row items-center sm:items-start">
-                        <img :src="doctor.profilePicture || 'https://via.placeholder.com/200'" :alt="doctor.firstName"
+                        <img :src="provider.profilePicture || ''" :alt="provider.firstName"
                             class="h-32 w-32 rounded-full object-cover" />
                         <div class="mt-4 sm:mt-0 sm:ml-6 text-center sm:text-left">
                             <h1 class="text-2xl font-bold text-gray-900">
-                                Dr. {{ doctor.firstName }} {{ doctor.lastName }}
+                                Dr. {{ provider.firstName }} {{ provider.lastName }}
                             </h1>
 
-                            <!-- Specializations as tags -->
+                            <!-- Expertise as tags -->
                             <div class="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
-                                <span v-for="spec in doctor.specializations" :key="spec"
+                                <span v-for="spec in provider.expertise" :key="spec"
                                     class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                                     {{ spec }}
                                 </span>
@@ -29,9 +29,9 @@
                             <div class="mt-3 flex flex-wrap gap-2 justify-center sm:justify-start">
                                 <span
                                     class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-                                    {{ doctor.experience }} years experience
+                                    {{ provider.experience }} years experience
                                 </span>
-                                <span v-for="lang in doctor.languages" :key="lang"
+                                <span v-for="lang in provider.languages" :key="lang"
                                     class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
                                     {{ lang }}
                                 </span>
@@ -44,13 +44,13 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
-                                Chat with Doctor
+                                Chat with Provider
                             </button>
                         </div>
 
                         <div class="mt-4 sm:mt-0 sm:ml-auto">
-                            <router-link v-if="authStore.isPatient"
-                                :to="{ name: 'book-appointment', params: { doctorId: doctor._id } }"
+                            <router-link v-if="authStore.isClient"
+                                :to="{ name: 'book-appointment', params: { providerId: provider._id } }"
                                 class="btn-primary">
                                 Book Appointment
                             </router-link>
@@ -66,20 +66,20 @@
 
                         <h3 class="text-lg font-semibold text-gray-900 mt-6 mb-2">Education</h3>
                         <ul class="space-y-2">
-                            <li v-for="edu in doctor.education" :key="edu.degree" class="text-gray-600">
+                            <li v-for="edu in provider.education" :key="edu.degree" class="text-gray-600">
                                 {{ edu.degree }} - {{ edu.institution }} ({{ edu.year }})
                             </li>
-                            <li v-if="!doctor.education || doctor.education.length === 0" class="text-gray-500">
+                            <li v-if="!provider.education || provider.education.length === 0" class="text-gray-500">
                                 No education information provided.
                             </li>
                         </ul>
 
                         <h3 class="text-lg font-semibold text-gray-900 mt-6 mb-2">Certification</h3>
                         <ul class="space-y-2">
-                            <li v-for="cert in doctor.certifications" :key="cert.issuer" class="text-gray-600">
+                            <li v-for="cert in provider.certifications" :key="cert.issuer" class="text-gray-600">
                                 {{ cert.issuer }} - {{ cert.name }} ({{ cert.year }})
                             </li>
-                            <li v-if="!doctor.certifications || doctor.certifications.length === 0"
+                            <li v-if="!provider.certifications || provider.certifications.length === 0"
                                 class="text-gray-500">
                                 No certification information provided.
                             </li>
@@ -87,12 +87,12 @@
                     </div>
 
                     <div>
-                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Consultation Details</h2>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Session Details</h2>
                         <div class="space-y-4">
                             <div>
                                 <h3 class="font-medium text-gray-900">Fee</h3>
                                 <p class="text-gray-600">
-                                    {{ formatConsultationFee }}
+                                    {{ formatSessionFee }}
                                 </p>
                             </div>
 
@@ -120,7 +120,7 @@
 
                 <!-- Reviews -->
                 <div class="p-6 sm:p-8 border-t border-gray-200">
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Patient Reviews</h2>
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Client Reviews</h2>
                     <div v-if="reviews.length === 0" class="text-gray-600">
                         No reviews yet.
                     </div>
@@ -139,18 +139,18 @@
                                     </div>
                                     <p class="mt-1 text-gray-900">{{ review.comment }}</p>
                                     <p class="mt-1 text-sm text-gray-500">
-                                        {{ review.patient.firstName }} {{ review.patient.lastName }} •
+                                        {{ review.client.firstName }} {{ review.client.lastName }} •
                                         {{ formatDate(review.createdAt) }}
                                     </p>
                                 </div>
                             </div>
-                            <div v-if="review.doctorResponse" class="mt-4 ml-6 p-4 bg-gray-50 rounded-lg">
+                            <div v-if="review.providerResponse" class="mt-4 ml-6 p-4 bg-gray-50 rounded-lg">
                                 <p class="text-sm text-gray-900">
-                                    <span class="font-medium">Doctor's response:</span>
-                                    {{ review.doctorResponse.text }}
+                                    <span class="font-medium">Provider's response:</span>
+                                    {{ review.providerResponse.text }}
                                 </p>
                                 <p class="mt-1 text-xs text-gray-500">
-                                    {{ formatDate(review.doctorResponse.respondedAt) }}
+                                    {{ formatDate(review.providerResponse.respondedAt) }}
                                 </p>
                             </div>
                         </div>
@@ -160,7 +160,7 @@
         </template>
 
         <div v-else class="text-center py-8">
-            <p class="text-gray-600">Doctor not found.</p>
+            <p class="text-gray-600">Provider not found.</p>
         </div>
     </div>
 </template>
@@ -175,31 +175,31 @@ import axios from 'axios'
 const route = useRoute()
 const authStore = useAuthStore()
 
-const doctor = ref(null)
+const provider = ref(null)
 const reviews = ref([])
 const loading = ref(true)
 const hasUpcomingAppointment = ref(false)
 
 const availableDays = computed(() => {
-    if (!doctor.value?.availability) return []
-    return doctor.value.availability.filter(day => day.isAvailable)
+    if (!provider.value?.availability) return []
+    return provider.value.availability.filter(day => day.isAvailable)
 })
 
 // Computed property for decoded bio
 const decodedBio = computed(() => {
-    if (!doctor.value?.bio) return 'No bio provided.'
+    if (!provider.value?.bio) return 'No bio provided.'
 
     // Create a temporary DOM element to decode HTML entities
     const textarea = document.createElement('textarea')
-    textarea.innerHTML = doctor.value.bio
+    textarea.innerHTML = provider.value.bio
     return textarea.value
 })
 
-// Computed property for formatted consultation fee
-const formatConsultationFee = computed(() => {
-    const fee = doctor.value?.consultationFee
+// Computed property for formatted session fee
+const formatSessionFee = computed(() => {
+    const fee = provider.value?.sessionFee
 
-    if (!fee) return 'Consultation fee not specified'
+    if (!fee) return 'Session fee not specified'
 
     // If fee is an object with amount property
     if (typeof fee === 'object' && fee !== null && 'amount' in fee) {
@@ -210,12 +210,12 @@ const formatConsultationFee = computed(() => {
         return `${new Intl.NumberFormat('uz-UZ').format(fee)} UZS`
     }
 
-    return 'Consultation fee not specified'
+    return 'Session fee not specified'
 })
 
 // Computed property for formatted address
 const formattedAddress = computed(() => {
-    const address = doctor.value?.address
+    const address = provider.value?.address
 
     if (!address) return 'Address not provided'
 
@@ -239,33 +239,33 @@ const formatDate = (date) => {
     return format(new Date(date), 'MMM d, yyyy')
 }
 
-async function fetchDoctorProfile() {
+async function fetchProviderProfile() {
     try {
         loading.value = true
-        const response = await axios.get(`/api/users/doctors/${route.params.id}`)
-        doctor.value = response.data.doctor
+        const response = await axios.get(`/api/users/providers/${route.params.id}`)
+        provider.value = response.data.provider
 
         // Fetch reviews
         try {
-            const reviewsResponse = await axios.get(`/api/reviews/doctor/${route.params.id}`)
+            const reviewsResponse = await axios.get(`/api/reviews/provider/${route.params.id}`)
             reviews.value = reviewsResponse.data.reviews
         } catch (reviewError) {
             console.error('Error fetching reviews:', reviewError)
             reviews.value = []
         }
     } catch (error) {
-        console.error('Error fetching doctor profile:', error)
+        console.error('Error fetching provider profile:', error)
     } finally {
         loading.value = false
     }
 }
 
 async function checkUpcomingAppointments() {
-    if (!authStore.isAuthenticated || !authStore.isPatient) return
+    if (!authStore.isAuthenticated || !authStore.isClient) return
 
     try {
-        const response = await axios.get(`/api/appointments/patient/${authStore.user._id}`, {
-            params: { status: 'scheduled', doctorId: doctor.value._id }
+        const response = await axios.get(`/api/appointments/client/${authStore.user._id}`, {
+            params: { status: 'scheduled', providerId: provider.value._id }
         })
         hasUpcomingAppointment.value = response.data.appointments.length > 0
     } catch (error) {
@@ -276,7 +276,7 @@ async function checkUpcomingAppointments() {
 async function startChat() {
     try {
         const response = await axios.post('/api/chat/conversations', {
-            participantId: doctor.value._id
+            participantId: provider.value._id
         })
 
         router.push({
@@ -289,7 +289,7 @@ async function startChat() {
 }
 
 onMounted(() => {
-    fetchDoctorProfile()
+    fetchProviderProfile()
     checkUpcomingAppointments()
 })
 </script>

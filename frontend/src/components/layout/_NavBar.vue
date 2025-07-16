@@ -1,14 +1,18 @@
 <template>
     <nav class="bg-white/95 backdrop-blur-md shadow-lg border-b border-medical-blue/10 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-24">
+            <div class="flex justify-between h-16">
                 <!-- Logo and main navigation -->
                 <div class="flex items-center">
                     <!-- Logo -->
-                    <a href='https://bolt.new/' target="_blank" rel="noopener noreferrer" class="flex items-center space-x-3">
-                        <img class="h-24 w-24 text-white" src="/images/logo.png" alt="">
-                    </a>
                     <router-link to="/" class="flex items-center space-x-3">
+                        <div class="bg-gradient-to-r from-medical-blue to-medical-teal rounded-xl p-2 shadow-lg">
+                            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
+                            <img class="h-24 w-24 text-white" src="/images/logo.png" alt="">
+                        </div>
                         <span class="text-xl font-bold">
                             POLYCLINIC.<span
                                 class="bg-gradient-to-r from-medical-blue to-medical-teal bg-clip-text text-transparent">YTECH</span><span

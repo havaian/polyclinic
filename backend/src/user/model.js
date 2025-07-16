@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const Schema = mongoose.Schema;
 
-// Time slot schema for doctor availability
+// Time slot schema for provider availability
 const timeSlotSchema = new Schema({
     startTime: {
         type: String, // Format: "HH:MM"
@@ -48,17 +48,17 @@ const userSchema = new Schema({
     },
     role: {
         type: String,
-        enum: ['patient', 'doctor', 'admin'],
-        default: 'patient'
+        enum: ['client', 'provider', 'admin'],
+        default: 'client'
     },
     dateOfBirth: {
         type: Date,
-        required: function () { return this.role === 'patient'; }
+        required: function () { return this.role === 'client'; }
     },
     gender: {
         type: String,
         enum: ['male', 'female', 'other', 'prefer not to say'],
-        required: function () { return this.role === 'patient'; }
+        required: function () { return this.role === 'client'; }
     },
     profilePicture: {
         type: String,
@@ -71,19 +71,20 @@ const userSchema = new Schema({
         zipCode: String,
         country: String
     },
-    // Doctor-specific fields
-    specializations: [{
+    
+    // Provider-specific fields (formerly doctor fields)
+    expertise: [{
         type: String,
-        required: function () { return this.role === 'doctor'; }
+        required: function () { return this.role === 'provider'; }
     }],
     licenseNumber: {
         type: String,
-        required: function () { return this.role === 'doctor'; }
+        required: function () { return this.role === 'provider'; }
     },
     experience: {
         type: Number,
         default: 0,
-        required: function () { return this.role === 'doctor'; }
+        required: function () { return this.role === 'provider'; }
     },
     education: [{
         degree: String,
@@ -112,18 +113,20 @@ const userSchema = new Schema({
         // New field - multiple time slots per day
         timeSlots: [timeSlotSchema]
     }],
-    consultationFee: {
+    sessionFee: {
         type: Number,
-        required: function () { return this.role === 'doctor'; }
+        required: function () { return this.role === 'provider'; }
     },
-    // Patient-specific fields
-    medicalHistory: {
-        allergies: [String],
-        chronicConditions: [String],
-        currentMedications: [String],
-        surgeries: [{
-            procedure: String,
-            year: Number
+    
+    // Client-specific fields (formerly patient fields)
+    history: {
+        notes: [String],
+        conditions: [String],
+        preferences: [String],
+        records: [{
+            type: String,
+            date: Date,
+            notes: String
         }]
     },
     emergencyContact: {
@@ -131,6 +134,7 @@ const userSchema = new Schema({
         relationship: String,
         phone: String
     },
+    
     // Agreement to terms
     termsAccepted: {
         type: Boolean,
@@ -143,6 +147,7 @@ const userSchema = new Schema({
     termsAcceptedAt: {
         type: Date
     },
+    
     // Common fields
     isVerified: {
         type: Boolean,
@@ -152,15 +157,20 @@ const userSchema = new Schema({
         type: Boolean,
         default: true
     },
-    telegramId: {
+    verificationToken: {
         type: String
     },
-    telegramVerificationCode: String,
-    telegramVerificationExpire: Date,
-    // Token and security related fields
-    resetPasswordToken: String,
-    resetPasswordExpire: Date,
-    verificationToken: String,
+    resetPasswordToken: {
+        type: String
+    },
+    resetPasswordExpire: {
+        type: Date
+    },
+    lastLogin: {
+        type: Date
+    },
+    
+    // JWT security
     jwtSecret: {
         type: String,
         default: function () {
@@ -171,57 +181,50 @@ const userSchema = new Schema({
         type: Date,
         default: Date.now
     },
+    
+    // Telegram integration
+    telegramId: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
+    telegramUsername: {
+        type: String
+    },
+    
+    // Timestamps
     createdAt: {
         type: Date,
         default: Date.now
     },
-    lastLogin: {
-        type: Date
+    updatedAt: {
+        type: Date,
+        default: Date.now
     }
 }, {
     timestamps: true
 });
 
-// Create a virtual field for full name
-userSchema.virtual('fullName').get(function () {
-    return `${this.firstName} ${this.lastName}`;
-});
+// Index for efficient queries
+userSchema.index({ email: 1 });
+userSchema.index({ role: 1 });
+userSchema.index({ isActive: 1 });
+userSchema.index({ expertise: 1 });
+userSchema.index({ telegramId: 1 });
 
-// Add indexes for searching doctors - removed the duplicate email index
-userSchema.index({ specializations: 1 });
-userSchema.index({ 'address.city': 1 });
-userSchema.index({ firstName: 'text', lastName: 'text', specializations: 'text' });
-
-// Encrypt password before saving
+// Hash password before saving
 userSchema.pre('save', async function (next) {
-    // Only hash the password if it's modified (or new)
-    if (!this.isModified('password')) return next();
-
+    if (!this.isModified('password')) {
+        return next();
+    }
+    
     try {
-        // Generate salt
-        const salt = await bcrypt.genSalt(10);
-
-        // Hash password
+        const salt = await bcrypt.genSalt(12);
         this.password = await bcrypt.hash(this.password, salt);
         next();
     } catch (error) {
         next(error);
     }
-});
-
-// Pre-save middleware to handle accepting terms
-userSchema.pre('save', function (next) {
-    if (this.isModified('termsAccepted') && this.termsAccepted) {
-        this.termsAcceptedAt = Date.now();
-    }
-    next();
-});
-
-userSchema.pre('save', function (next) {
-    if (this.specializations) {
-        this.specializations = [...new Set(this.specializations)];
-    }
-    next();
 });
 
 // Method to check if password matches
@@ -234,7 +237,7 @@ userSchema.methods.generateAuthToken = function () {
     return jwt.sign(
         { id: this._id, role: this.role },
         this.jwtSecret || process.env.JWT_SECRET,
-        { expiresIn: '24h' } // Set token expiration to 24 hours
+        { expiresIn: '24h' }
     );
 };
 
@@ -247,43 +250,46 @@ userSchema.methods.rotateJwtSecret = function () {
 
 // Generate password reset token
 userSchema.methods.generatePasswordResetToken = function () {
-    // Generate token
     const resetToken = crypto.randomBytes(20).toString('hex');
-
-    // Hash token and set to resetPasswordToken field
+    
     this.resetPasswordToken = crypto
         .createHash('sha256')
         .update(resetToken)
         .digest('hex');
-
-    // Set token expire time (10 minutes)
+    
     this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
-
+    
     return resetToken;
 };
 
-// Method to get doctor's basic public profile
+// Method to get provider's/client's public profile
 userSchema.methods.getPublicProfile = function () {
     const user = this.toObject();
-
+    
     // Remove sensitive information
     delete user.password;
     delete user.resetPasswordToken;
     delete user.resetPasswordExpire;
     delete user.verificationToken;
     delete user.jwtSecret;
-
+    
     return user;
 };
 
-// Static method to find available doctors by specializations
-userSchema.statics.findAvailableDoctors = function (specializations) {
+// Static method to find available providers by expertise
+userSchema.statics.findAvailableProviders = function (expertise) {
     return this.find({
-        role: 'doctor',
+        role: 'provider',
         isActive: true,
         isVerified: true,
-        specializations: specializations || { $exists: true }
+        expertise: expertise || { $exists: true }
     }).select('-password');
+};
+
+// Static method to find providers by expertise (replaces findAvailableDoctors)
+userSchema.statics.findAvailableDoctors = function (specializations) {
+    // Legacy method - redirect to new method for backward compatibility
+    return this.findAvailableProviders(specializations);
 };
 
 const User = mongoose.model('User', userSchema);

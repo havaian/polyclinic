@@ -2,17 +2,17 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const paymentSchema = new Schema({
-    appointment: {
+    session: {
         type: Schema.Types.ObjectId,
-        ref: 'Appointment',
+        ref: 'Session',
         required: true
     },
-    patient: {
+    client: {
         type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    doctor: {
+    provider: {
         type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
@@ -46,11 +46,28 @@ const paymentSchema = new Schema({
 });
 
 // Indexes for faster queries
-paymentSchema.index({ appointment: 1 });
-paymentSchema.index({ patient: 1 });
-paymentSchema.index({ doctor: 1 });
+paymentSchema.index({ session: 1 });
+paymentSchema.index({ client: 1 });
+paymentSchema.index({ provider: 1 });
 paymentSchema.index({ status: 1 });
 paymentSchema.index({ stripeSessionId: 1 });
+
+// Add legacy fields for backward compatibility
+paymentSchema.virtual('appointment').get(function() {
+    return this.session;
+});
+
+paymentSchema.virtual('patient').get(function() {
+    return this.client;
+});
+
+paymentSchema.virtual('doctor').get(function() {
+    return this.provider;
+});
+
+// Ensure virtual fields are included in JSON
+paymentSchema.set('toJSON', { virtuals: true });
+paymentSchema.set('toObject', { virtuals: true });
 
 const Payment = mongoose.model('Payment', paymentSchema);
 

@@ -6,14 +6,14 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label for="search" class="label">Search by name</label>
-            <input id="search" v-model="filters.name" type="text" class="input mt-1" placeholder="Search doctors..."
+            <input id="search" v-model="filters.name" type="text" class="input mt-1" placeholder="Search providers..."
               @input="handleSearch" />
           </div>
           <div>
-            <label for="specializations" class="label">Specialization</label>
-            <select id="specializations" v-model="filters.specializations" class="input mt-1" @change="handleSearch">
-              <option value="">All Specializations</option>
-              <option v-for="spec in specializations" :key="spec" :value="spec">
+            <label for="expertise" class="label">Specialization</label>
+            <select id="expertise" v-model="filters.expertise" class="input mt-1" @change="handleSearch">
+              <option value="">All Expertise</option>
+              <option v-for="spec in expertise" :key="spec" :value="spec">
                 {{ spec }}
               </option>
             </select>
@@ -30,31 +30,31 @@
         </div>
       </div>
 
-      <!-- Doctor list -->
+      <!-- Provider list -->
       <div class="space-y-4">
         <div v-if="loading" class="text-center py-8">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent">
           </div>
-          <p class="mt-2 text-gray-600">Loading doctors...</p>
+          <p class="mt-2 text-gray-600">Loading providers...</p>
         </div>
 
         <template v-else>
-          <div v-if="doctors.length === 0" class="text-center py-8">
-            <p class="text-gray-600">No doctors found matching your criteria.</p>
+          <div v-if="providers.length === 0" class="text-center py-8">
+            <p class="text-gray-600">No providers found matching your criteria.</p>
           </div>
 
           <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div v-for="doctor in doctors" :key="doctor._id" class="bg-white shadow rounded-lg overflow-hidden">
+            <div v-for="provider in providers" :key="provider._id" class="bg-white shadow rounded-lg overflow-hidden">
               <div class="p-6">
                 <div class="flex items-center space-x-4">
-                  <img :src="doctor.profilePicture || '/images/user-placeholder.jpg'" :alt="doctor.firstName"
+                  <img :src="provider.profilePicture || '/images/user-placeholder.jpg'" :alt="provider.firstName"
                     class="h-16 w-16 rounded-full object-cover" />
                   <div>
                     <h3 class="text-lg font-medium text-gray-900">
-                      Dr. {{ doctor.firstName }} {{ doctor.lastName }}
+                      Dr. {{ provider.firstName }} {{ provider.lastName }}
                     </h3>
                     <div class="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
-                      <span v-for="spec in doctor.specializations" :key="spec"
+                      <span v-for="spec in provider.expertise" :key="spec"
                         class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                         {{ spec }}
                       </span>
@@ -65,20 +65,20 @@
                 <div class="mt-4 space-y-2">
                   <p class="text-sm">
                     <span class="font-medium">Experience:</span>
-                    {{ doctor.experience }} years
+                    {{ provider.experience }} years
                   </p>
                   <p class="text-sm">
-                    <span class="font-medium">Consultation Fee:</span>
-                    {{ formatCurrency(doctor.consultationFee) }} {{ doctor.consultationFee.currency || 'UZS' }}
+                    <span class="font-medium">Session Fee:</span>
+                    {{ formatCurrency(provider.sessionFee) }} {{ provider.sessionFee.currency || 'UZS' }}
                   </p>
                   <p class="text-sm">
                     <span class="font-medium">Languages:</span>
-                    {{ doctor.languages?.join(', ') || 'Not specified' }}
+                    {{ provider.languages?.join(', ') || 'Not specified' }}
                   </p>
                 </div>
 
                 <div class="mt-6">
-                  <router-link :to="{ name: 'doctor-profile-view', params: { id: doctor._id } }"
+                  <router-link :to="{ name: 'provider-profile-view', params: { id: provider._id } }"
                     class="btn-primary w-full justify-center">
                     View Profile
                   </router-link>
@@ -107,20 +107,29 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const specializations = [
-  'Cardiology',
-  'Dermatology',
-  'Endocrinology',
-  'Family Medicine',
-  'Gastroenterology',
-  'Neurology',
-  'Obstetrics & Gynecology',
-  'Ophthalmology',
-  'Pediatrics',
-  'Psychiatry',
-  'Pulmonology',
-  'Urology'
-]
+const expertise = ref([])
+
+async function fetchExpertise() {
+  try {
+    const response = await axios.get('/api/expertise')
+    expertise.value = response.data.expertise.map(s => s.name)
+  } catch (error) {
+    console.error('Error fetching expertise:', error)
+    // Set some defaults in case API call fails
+    expertise.value = [
+      'Cardiology',
+      'Pediatrics',
+      'Dermatology',
+      'Neurology',
+      'Orthopedics',
+      'Gynecology',
+      'Psychiatry',
+      'Ophthalmology',
+      'General Medicine',
+      'Endocrinology'
+    ]
+  }
+}
 
 const cities = [
   'Tashkent',
@@ -131,13 +140,13 @@ const cities = [
   'Bukhara'
 ]
 
-const doctors = ref([])
+const providers = ref([])
 const loading = ref(false)
 const currentPage = ref(1)
 const totalPages = ref(1)
 const filters = reactive({
   name: '',
-  specializations: '',
+  expertise: '',
   city: ''
 })
 
@@ -145,7 +154,7 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat('uz-UZ').format(amount)
 }
 
-async function fetchDoctors() {
+async function fetchProviders() {
   try {
     loading.value = true
     const params = {
@@ -154,11 +163,11 @@ async function fetchDoctors() {
       ...filters
     }
 
-    const response = await axios.get('/api/users/doctors', { params })
-    doctors.value = response.data.doctors
+    const response = await axios.get('/api/users/providers', { params })
+    providers.value = response.data.providers
     totalPages.value = Math.ceil(response.data.pagination.total / response.data.pagination.limit)
   } catch (error) {
-    console.error('Error fetching doctors:', error)
+    console.error('Error fetching providers:', error)
   } finally {
     loading.value = false
   }
@@ -166,15 +175,16 @@ async function fetchDoctors() {
 
 function handleSearch() {
   currentPage.value = 1
-  fetchDoctors()
+  fetchProviders()
 }
 
 function handlePageChange(page) {
   currentPage.value = page
-  fetchDoctors()
+  fetchProviders()
 }
 
 onMounted(() => {
-  fetchDoctors()
+  fetchProviders()
+  fetchExpertise()
 })
 </script>

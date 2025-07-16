@@ -20,7 +20,7 @@ const scheduleAppointmentReminders = () => {
                     $lte: endOfTomorrow
                 },
                 status: 'scheduled'
-            }).populate('doctor patient');
+            }).populate('provider client');
 
             console.log(`Found ${appointments.length} appointments for tomorrow`);
 

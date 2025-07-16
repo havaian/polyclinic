@@ -1,24 +1,24 @@
 const Joi = require('joi');
 
 /**
- * Validate user registration input
+ * Validate user registration and update input
  * @param {Object} data User data for validation
  * @returns {Object} Validation result
  */
 exports.validateUserInput = (data) => {
-    // Define base schema for common fields
+    // Define base schema for all users
     const baseSchema = {
         firstName: Joi.string().trim().min(2).max(50).required()
             .messages({
                 'string.empty': 'First name is required',
-                'string.min': 'First name must be at least 2 characters long',
+                'string.min': 'First name must be at least 2 characters',
                 'string.max': 'First name cannot exceed 50 characters'
             }),
 
         lastName: Joi.string().trim().min(2).max(50).required()
             .messages({
                 'string.empty': 'Last name is required',
-                'string.min': 'Last name must be at least 2 characters long',
+                'string.min': 'Last name must be at least 2 characters',
                 'string.max': 'Last name cannot exceed 50 characters'
             }),
 
@@ -28,84 +28,87 @@ exports.validateUserInput = (data) => {
                 'string.email': 'Please provide a valid email address'
             }),
 
-        password: Joi.string().min(8).max(100).required()
-            .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])'))
+        password: Joi.string().min(8).required()
             .messages({
                 'string.empty': 'Password is required',
-                'string.min': 'Password must be at least 8 characters long',
-                'string.max': 'Password cannot exceed 100 characters',
-                'string.pattern.base': 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
+                'string.min': 'Password must be at least 8 characters long'
             }),
 
         phone: Joi.string().trim().required()
-            .pattern(new RegExp('^[+]?[0-9]{10,15}$'))
             .messages({
-                'string.empty': 'Phone number is required',
-                'string.pattern.base': 'Please provide a valid phone number'
+                'string.empty': 'Phone number is required'
             }),
 
-        role: Joi.string().valid('patient', 'doctor').default('patient'),
+        role: Joi.string().valid('client', 'provider', 'admin').optional()
+            .messages({
+                'any.only': 'Role must be either client, provider, or admin'
+            }),
 
-        // Common optional fields
+        profilePicture: Joi.string().uri().optional()
+            .messages({
+                'string.uri': 'Profile picture must be a valid URL'
+            }),
+
         address: Joi.object({
-            street: Joi.string().trim().max(100).optional(),
-            city: Joi.string().trim().max(50).optional(),
-            state: Joi.string().trim().max(50).optional(),
-            zipCode: Joi.string().trim().max(20).optional(),
-            country: Joi.string().trim().max(50).optional()
-        }).optional()
+            street: Joi.string().trim().optional(),
+            city: Joi.string().trim().optional(),
+            state: Joi.string().trim().optional(),
+            zipCode: Joi.string().trim().optional(),
+            country: Joi.string().trim().optional()
+        }).optional(),
+
+        termsAccepted: Joi.boolean().valid(true).optional()
+            .messages({
+                'any.only': 'Terms must be accepted'
+            }),
+
+        privacyPolicyAccepted: Joi.boolean().valid(true).optional()
+            .messages({
+                'any.only': 'Privacy policy must be accepted'
+            })
     };
 
-    // Define patient-specific schema
-    const patientSchema = {
-        // Patient-specific required fields
-        dateOfBirth: Joi.date().max('now').required()
+    // Define client-specific schema
+    const clientSchema = {
+        dateOfBirth: Joi.date().less('now').required()
             .messages({
                 'date.base': 'Please provide a valid date of birth',
-                'date.max': 'Date of birth cannot be in the future',
-                'any.required': 'Date of birth is required for patients'
+                'date.less': 'Date of birth must be in the past',
+                'any.required': 'Date of birth is required for clients'
             }),
 
         gender: Joi.string().valid('male', 'female', 'other', 'prefer not to say').required()
             .messages({
-                'any.only': 'Gender must be one of: male, female, other, prefer not to say',
-                'any.required': 'Gender is required for patients'
+                'any.only': 'Gender must be male, female, other, or prefer not to say',
+                'any.required': 'Gender is required for clients'
             }),
 
-        // Patient-specific optional fields
-        medicalHistory: Joi.object({
-            allergies: Joi.array().items(Joi.string()),
-            chronicConditions: Joi.array().items(Joi.string()),
-            currentMedications: Joi.array().items(Joi.string()),
-            surgeries: Joi.array().items(Joi.object({
-                procedure: Joi.string().required(),
-                year: Joi.number().integer().min(1900).max(new Date().getFullYear()).required()
-            }))
+        history: Joi.object({
+            notes: Joi.array().items(Joi.string()).optional(),
+            conditions: Joi.array().items(Joi.string()).optional(),
+            preferences: Joi.array().items(Joi.string()).optional()
         }).optional(),
 
         emergencyContact: Joi.object({
-            name: Joi.string().trim().min(2).max(100),
-            relationship: Joi.string().trim().min(2).max(50),
+            name: Joi.string().trim().optional(),
+            relationship: Joi.string().trim().optional(),
             phone: Joi.string().trim().pattern(new RegExp('^[+]?[0-9]{10,15}$'))
+                .messages({
+                    'string.pattern.base': 'Emergency contact phone must be a valid phone number'
+                }).optional()
         }).optional(),
     };
 
-    // Define doctor-specific schema
-    const doctorSchema = {
-        // Doctor-specific required fields
-        specializations: Joi.string().trim().required()
+    // Define provider-specific schema
+    const providerSchema = {
+        expertise: Joi.array().items(Joi.string().trim()).min(1).required()
             .messages({
-                'string.empty': 'Specialization is required for doctors'
-            }),
-
-        specializations: Joi.array().items(Joi.string().trim()).min(1).required()
-            .messages({
-                'array.min': 'At least one specializations is required for doctors'
+                'array.min': 'At least one area of expertise is required for providers'
             }),
 
         licenseNumber: Joi.string().trim().required()
             .messages({
-                'string.empty': 'License number is required for doctors'
+                'string.empty': 'License number is required for providers'
             }),
 
         experience: Joi.number().integer().min(0).required()
@@ -113,17 +116,16 @@ exports.validateUserInput = (data) => {
                 'number.base': 'Experience must be a number',
                 'number.integer': 'Experience must be an integer',
                 'number.min': 'Experience cannot be negative',
-                'any.required': 'Experience is required for doctors'
+                'any.required': 'Experience is required for providers'
             }),
 
-        consultationFee: Joi.number().positive().required()
+        sessionFee: Joi.number().positive().required()
             .messages({
-                'number.base': 'Consultation fee must be a number',
-                'number.positive': 'Consultation fee must be positive',
-                'any.required': 'Consultation fee is required for doctors'
+                'number.base': 'Session fee must be a number',
+                'number.positive': 'Session fee must be positive',
+                'any.required': 'Session fee is required for providers'
             }),
 
-        // Doctor-specific optional fields
         bio: Joi.string().trim().max(500).optional()
             .messages({
                 'string.max': 'Bio cannot exceed 500 characters'
@@ -159,11 +161,11 @@ exports.validateUserInput = (data) => {
 
     // Choose schema based on role
     let schemaToUse;
-    if (data.role === 'doctor') {
-        schemaToUse = { ...baseSchema, ...doctorSchema };
+    if (data.role === 'provider') {
+        schemaToUse = { ...baseSchema, ...providerSchema };
     } else {
-        // Patient role
-        schemaToUse = { ...baseSchema, ...patientSchema };
+        // Client role
+        schemaToUse = { ...baseSchema, ...clientSchema };
     }
 
     // Create and return schema
@@ -172,38 +174,47 @@ exports.validateUserInput = (data) => {
 };
 
 /**
- * Validate appointment input
- * @param {Object} data Appointment data for validation
+ * Validate session booking input
+ * @param {Object} data Session data for validation
  * @returns {Object} Validation result
  */
-exports.validateAppointmentInput = (data) => {
+exports.validateSessionInput = (data) => {
     const schema = Joi.object({
-        // Remove patientId from validation schema completely
-        doctorId: Joi.string().required()
+        providerId: Joi.string().required()
             .messages({
-                'string.empty': 'Doctor ID is required',
-                'any.required': 'Doctor ID is required'
+                'string.empty': 'Provider ID is required',
+                'any.required': 'Provider ID is required'
             }),
 
         dateTime: Joi.date().greater('now').required()
             .messages({
                 'date.base': 'Please provide a valid date and time',
-                'date.greater': 'Appointment date must be in the future',
-                'any.required': 'Appointment date and time are required'
+                'date.greater': 'Session date must be in the future',
+                'any.required': 'Session date and time is required'
             }),
 
-        type: Joi.string().valid('video', 'chat', 'voice').required()
+        duration: Joi.number().integer().min(15).max(120).multiple(15).required()
             .messages({
-                'any.only': 'Consultation type must be one of: video, chat, voice',
-                'any.required': 'Consultation type is required'
+                'number.base': 'Duration must be a number',
+                'number.integer': 'Duration must be an integer',
+                'number.min': 'Duration must be at least 15 minutes',
+                'number.max': 'Duration cannot exceed 120 minutes',
+                'number.multiple': 'Duration must be a multiple of 15 minutes',
+                'any.required': 'Duration is required'
             }),
 
-        reasonForVisit: Joi.string().trim().min(5).max(500).required()
+        type: Joi.string().valid('video', 'audio', 'chat').required()
             .messages({
-                'string.empty': 'Reason for visit is required',
-                'string.min': 'Reason for visit must be at least 5 characters long',
-                'string.max': 'Reason for visit cannot exceed 500 characters',
-                'any.required': 'Reason for visit is required'
+                'any.only': 'Session type must be video, audio, or chat',
+                'any.required': 'Session type is required'
+            }),
+
+        purpose: Joi.string().trim().min(10).max(500).required()
+            .messages({
+                'string.empty': 'Purpose is required',
+                'string.min': 'Purpose must be at least 10 characters',
+                'string.max': 'Purpose cannot exceed 500 characters',
+                'any.required': 'Purpose is required'
             }),
 
         notes: Joi.string().trim().max(1000).optional()
@@ -216,47 +227,23 @@ exports.validateAppointmentInput = (data) => {
 };
 
 /**
- * Validate prescription input
- * @param {Object} data Prescription data for validation
+ * Validate login input
+ * @param {Object} data Login data for validation
  * @returns {Object} Validation result
  */
-exports.validatePrescriptionInput = (data) => {
-    const prescriptionSchema = Joi.object({
-        medication: Joi.string().trim().required()
-            .messages({
-                'string.empty': 'Medication name is required',
-                'any.required': 'Medication name is required'
-            }),
-
-        dosage: Joi.string().trim().required()
-            .messages({
-                'string.empty': 'Dosage is required',
-                'any.required': 'Dosage is required'
-            }),
-
-        frequency: Joi.string().trim().required()
-            .messages({
-                'string.empty': 'Frequency is required',
-                'any.required': 'Frequency is required'
-            }),
-
-        duration: Joi.string().trim().required()
-            .messages({
-                'string.empty': 'Duration is required',
-                'any.required': 'Duration is required'
-            }),
-
-        instructions: Joi.string().trim().max(500).optional()
-            .messages({
-                'string.max': 'Instructions cannot exceed 500 characters'
-            })
-    });
-
+exports.validateLoginInput = (data) => {
     const schema = Joi.object({
-        prescriptions: Joi.array().items(prescriptionSchema).min(1).required()
+        email: Joi.string().trim().email().required()
             .messages({
-                'array.min': 'At least one prescription is required',
-                'any.required': 'Prescriptions are required'
+                'string.empty': 'Email is required',
+                'string.email': 'Please provide a valid email address',
+                'any.required': 'Email is required'
+            }),
+
+        password: Joi.string().required()
+            .messages({
+                'string.empty': 'Password is required',
+                'any.required': 'Password is required'
             })
     });
 
@@ -264,110 +251,17 @@ exports.validatePrescriptionInput = (data) => {
 };
 
 /**
- * Validate doctor availability input
- * @param {Object} data Availability data for validation
+ * Validate password reset input
+ * @param {Object} data Password reset data for validation
  * @returns {Object} Validation result
  */
-exports.validateAvailabilityInput = (data) => {
-    const availabilityItemSchema = Joi.object({
-        dayOfWeek: Joi.number().integer().min(0).max(6).required()
-            .messages({
-                'number.base': 'Day of week must be a number',
-                'number.integer': 'Day of week must be an integer',
-                'number.min': 'Day of week must be between 0 (Sunday) and 6 (Saturday)',
-                'number.max': 'Day of week must be between 0 (Sunday) and 6 (Saturday)',
-                'any.required': 'Day of week is required'
-            }),
-
-        isAvailable: Joi.boolean().required()
-            .messages({
-                'boolean.base': 'Availability status must be a boolean',
-                'any.required': 'Availability status is required'
-            }),
-
-        startTime: Joi.when('isAvailable', {
-            is: true,
-            then: Joi.string().pattern(new RegExp('^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$')).required()
-                .messages({
-                    'string.pattern.base': 'Start time must be in format HH:MM (24-hour)',
-                    'any.required': 'Start time is required when available is true'
-                }),
-            otherwise: Joi.string().optional()
-        }),
-
-        endTime: Joi.when('isAvailable', {
-            is: true,
-            then: Joi.string().pattern(new RegExp('^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$')).required()
-                .messages({
-                    'string.pattern.base': 'End time must be in format HH:MM (24-hour)',
-                    'any.required': 'End time is required when available is true'
-                }),
-            otherwise: Joi.string().optional()
-        })
-    }).custom((value, helpers) => {
-        if (value.isAvailable) {
-            // Check if end time is after start time
-            const [startHour, startMinute] = value.startTime.split(':').map(Number);
-            const [endHour, endMinute] = value.endTime.split(':').map(Number);
-
-            const startMinutes = startHour * 60 + startMinute;
-            const endMinutes = endHour * 60 + endMinute;
-
-            if (endMinutes <= startMinutes) {
-                return helpers.error('custom.timeRange', { message: 'End time must be after start time' });
-            }
-        }
-
-        return value;
-    });
-
+exports.validatePasswordResetInput = (data) => {
     const schema = Joi.object({
-        availability: Joi.array().items(availabilityItemSchema).min(7).max(7).required()
+        email: Joi.string().trim().email().required()
             .messages({
-                'array.min': 'Availability must be specified for all 7 days of the week',
-                'array.max': 'Availability must be specified for all 7 days of the week',
-                'any.required': 'Availability is required'
-            })
-    }).custom((value, helpers) => {
-        // Check if all days of the week are covered
-        const daysOfWeek = value.availability.map(item => item.dayOfWeek);
-
-        // Check for duplicates
-        const uniqueDays = [...new Set(daysOfWeek)];
-        if (uniqueDays.length !== 7) {
-            return helpers.error('custom.daysOfWeek', {
-                message: 'Availability must include each day of the week (0-6) exactly once'
-            });
-        }
-
-        // Check if all days (0-6) are included
-        for (let i = 0; i <= 6; i++) {
-            if (!daysOfWeek.includes(i)) {
-                return helpers.error('custom.missingDay', {
-                    message: `Availability for day ${i} is missing`
-                });
-            }
-        }
-
-        return value;
-    });
-
-    return schema.validate(data, { abortEarly: false });
-};
-
-/**
- * Validate consultation summary input
- * @param {Object} data Summary data for validation
- * @returns {Object} Validation result
- */
-exports.validateConsultationSummaryInput = (data) => {
-    const schema = Joi.object({
-        consultationSummary: Joi.string().trim().min(10).max(2000).required()
-            .messages({
-                'string.empty': 'Consultation summary is required',
-                'string.min': 'Consultation summary must be at least 10 characters long',
-                'string.max': 'Consultation summary cannot exceed 2000 characters',
-                'any.required': 'Consultation summary is required'
+                'string.empty': 'Email is required',
+                'string.email': 'Please provide a valid email address',
+                'any.required': 'Email is required'
             })
     });
 
@@ -375,19 +269,28 @@ exports.validateConsultationSummaryInput = (data) => {
 };
 
 /**
- * Validate follow-up input
- * @param {Object} data Follow-up data for validation
+ * Validate new password input
+ * @param {Object} data New password data for validation
  * @returns {Object} Validation result
  */
-exports.validateFollowUpInput = (data) => {
+exports.validateNewPasswordInput = (data) => {
     const schema = Joi.object({
-        followUpDate: Joi.date().greater('now').required()
+        password: Joi.string().min(8).required()
             .messages({
-                'date.base': 'Please provide a valid follow-up date',
-                'date.greater': 'Follow-up date must be in the future',
-                'any.required': 'Follow-up date is required'
+                'string.empty': 'Password is required',
+                'string.min': 'Password must be at least 8 characters long',
+                'any.required': 'Password is required'
+            }),
+
+        confirmPassword: Joi.string().valid(Joi.ref('password')).required()
+            .messages({
+                'any.only': 'Confirm password must match password',
+                'any.required': 'Confirm password is required'
             })
     });
 
     return schema.validate(data, { abortEarly: false });
 };
+
+// Legacy exports for backward compatibility
+exports.validateAppointmentInput = exports.validateSessionInput;

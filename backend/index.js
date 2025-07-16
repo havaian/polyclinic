@@ -23,9 +23,9 @@ const appointmentRoutes = require('./src/appointment/routes');
 const telegramRoutes = require('./src/bot/routes');
 // const assistantRoutes = require('./src/assistant/routes');
 const paymentRoutes = require('./src/payment/routes');
-const consultationRoutes = require('./src/consultation/routes');
+const sessionRoutes = require('./src/session/routes');
 const adminRoutes = require('./src/admin/routes');
-const specializationRoutes = require('./src/specializations/routes');
+const specializationRoutes = require('./src/expertise/routes');
 const chatRoutes = require('./src/chat/routes'); // Added chat routes
 
 // Initialize express app
@@ -140,7 +140,7 @@ app.use((req, res, next) => {
         // Only sanitize fields that could contain HTML/script tags
         // For text fields like bio, we should preserve apostrophes and quotes
         const fieldsToFullySanitize = ['html', 'script', 'code', 'content'];
-        const fieldsToPreserveQuotes = ['bio', 'reasonForVisit', 'consultationSummary', 'notes', 'text', 'comment'];
+        const fieldsToPreserveQuotes = ['bio', 'purpose', 'sessionSummary', 'notes', 'text', 'comment'];
 
         // Check if this field should preserve quotes and apostrophes
         const shouldPreserveQuotes = fieldsToPreserveQuotes.some(field =>
@@ -207,74 +207,74 @@ app.use((req, res, next) => {
 
 // Response middleware to decode HTML entities in specific fields
 app.use((req, res, next) => {
-    // Save the original res.json function
-    const originalJson = res.json;
+    // // Save the original res.json function
+    // const originalJson = res.json;
 
-    // Override the res.json function
-    res.json = function (data) {
-        // If data is an object and not null, process it
-        if (data && typeof data === 'object') {
-            data = decodeHtmlEntitiesInObject(data);
-        }
+    // // Override the res.json function
+    // res.json = function (data) {
+    //     // If data is an object and not null, process it
+    //     if (data && typeof data === 'object') {
+    //         data = decodeHtmlEntitiesInObject(data);
+    //     }
 
-        // Call the original json function with processed data
-        return originalJson.call(this, data);
-    };
+    //     // Call the original json function with processed data
+    //     return originalJson.call(this, data);
+    // };
 
-    // Function to decode HTML entities in strings
-    function decodeHtmlEntities(str) {
-        if (typeof str !== 'string') return str;
+    // // Function to decode HTML entities in strings
+    // function decodeHtmlEntities(str) {
+    //     if (typeof str !== 'string') return str;
 
-        return str
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#x27;/g, "'")
-            .replace(/&#x2F;/g, '/')
-            .replace(/&amp;/g, '&');
-    }
+    //     return str
+    //         .replace(/&lt;/g, '<')
+    //         .replace(/&gt;/g, '>')
+    //         .replace(/&quot;/g, '"')
+    //         .replace(/&#x27;/g, "'")
+    //         .replace(/&#x2F;/g, '/')
+    //         .replace(/&amp;/g, '&');
+    // }
 
-    // Function to process objects and decode HTML entities
-    function decodeHtmlEntitiesInObject(obj) {
-        if (!obj) return obj;
+    // // Function to process objects and decode HTML entities
+    // function decodeHtmlEntitiesInObject(obj) {
+    //     if (!obj) return obj;
 
-        // Handle different types
-        if (typeof obj === 'string') {
-            return decodeHtmlEntities(obj);
-        }
+    //     // Handle different types
+    //     if (typeof obj === 'string') {
+    //         return decodeHtmlEntities(obj);
+    //     }
 
-        if (Array.isArray(obj)) {
-            return obj.map(item => decodeHtmlEntitiesInObject(item));
-        }
+    //     if (Array.isArray(obj)) {
+    //         return obj.map(item => decodeHtmlEntitiesInObject(item));
+    //     }
 
-        if (typeof obj === 'object') {
-            const result = {};
+    //     if (typeof obj === 'object') {
+    //         const result = {};
 
-            // These fields should have HTML entities decoded
-            const fieldsToProcess = [
-                'bio', 'reasonForVisit', 'consultationSummary',
-                'notes', 'text', 'comment', 'message'
-            ];
+    //         // These fields should have HTML entities decoded
+    //         const fieldsToProcess = [
+    //             'bio', 'purpose', 'sessionSummary',
+    //             'notes', 'text', 'comment', 'message'
+    //         ];
 
-            // Process each property
-            for (const key in obj) {
-                if (Object.hasOwnProperty.call(obj, key)) {
-                    // If this is a field we should decode, or it's an object that might contain such fields
-                    if (fieldsToProcess.includes(key) && typeof obj[key] === 'string') {
-                        result[key] = decodeHtmlEntities(obj[key]);
-                    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-                        result[key] = decodeHtmlEntitiesInObject(obj[key]);
-                    } else {
-                        result[key] = obj[key];
-                    }
-                }
-            }
+    //         // Process each property
+    //         for (const key in obj) {
+    //             if (Object.hasOwnProperty.call(obj, key)) {
+    //                 // If this is a field we should decode, or it's an object that might contain such fields
+    //                 if (fieldsToProcess.includes(key) && typeof obj[key] === 'string') {
+    //                     result[key] = decodeHtmlEntities(obj[key]);
+    //                 } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+    //                     result[key] = decodeHtmlEntitiesInObject(obj[key]);
+    //                 } else {
+    //                     result[key] = obj[key];
+    //                 }
+    //             }
+    //         }
 
-            return result;
-        }
+    //         return result;
+    //     }
 
-        return obj;
-    }
+    //     return obj;
+    // }
 
     next();
 });
@@ -314,9 +314,9 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/telegram', telegramRoutes);
 // app.use('/api/assistant', assistantRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/consultations', consultationRoutes);
+app.use('/api/sessions', sessionRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/specializations', specializationRoutes);
+app.use('/api/expertise', specializationRoutes);
 app.use('/api/chat', chatRoutes); // Added chat routes
 
 // Initialize cron jobs
@@ -374,5 +374,7 @@ process.on('uncaughtException', err => {
     // Close server & exit process
     process.exit(1);
 });
+
+// require('./seed');
 
 module.exports = { app, server, io };

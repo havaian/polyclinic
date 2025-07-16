@@ -17,13 +17,14 @@ const chatMessageSchema = new Schema({
     }
 });
 
-const appointmentSchema = new Schema({
-    patient: {
+// Main session schema (formerly appointmentSchema)
+const sessionSchema = new Schema({
+    client: {
         type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    doctor: {
+    provider: {
         type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
@@ -55,42 +56,53 @@ const appointmentSchema = new Schema({
     },
     status: {
         type: String,
-        enum: ['pending-payment', 'pending-doctor-confirmation', 'scheduled', 'completed', 'canceled', 'no-show'],
-        default: 'pending-doctor-confirmation'
+        enum: ['pending-payment', 'pending-provider-confirmation', 'scheduled', 'completed', 'canceled', 'no-show'],
+        default: 'pending-provider-confirmation'
     },
     type: {
         type: String,
         enum: ['video', 'audio', 'chat'],
         required: true
     },
-    reasonForVisit: {
+    purpose: {
         type: String,
         required: true
     },
     notes: {
         type: String
     },
-    consultationSummary: {
+    sessionSummary: {
         type: String
     },
-    // Added chatLog field to store messages
+    // Chat log for the session
     chatLog: [chatMessageSchema],
-    prescriptions: [{
-        medication: String,
-        dosage: String,
-        frequency: String,
-        duration: String,
+    
+    // Recommendations (formerly prescriptions)
+    recommendations: [{
+        title: String,
+        description: String,
+        type: String, // 'action', 'resource', 'followup', etc.
+        priority: {
+            type: String,
+            enum: ['low', 'medium', 'high'],
+            default: 'medium'
+        },
+        dueDate: Date,
         instructions: String,
         createdAt: {
             type: Date,
             default: Date.now
         }
     }],
+    
+    // Follow-up session information
     followUp: {
         recommended: Boolean,
         date: Date,
         notes: String
     },
+    
+    // Payment information
     payment: {
         amount: Number,
         status: {
@@ -100,25 +112,33 @@ const appointmentSchema = new Schema({
         },
         transactionId: String
     },
+    
+    // Document attachments
     documents: [{
         name: String,
         fileUrl: String,
         fileType: String,
         uploadedBy: {
             type: String,
-            enum: ['patient', 'doctor']
+            enum: ['client', 'provider']
         },
         uploadedAt: {
             type: Date,
             default: Date.now
         }
     }],
+    
+    // Cancellation information
     cancellationReason: {
         type: String
     },
-    doctorConfirmationExpires: {
+    
+    // Provider confirmation expiration
+    providerConfirmationExpires: {
         type: Date
     },
+    
+    // Timestamps
     createdAt: {
         type: Date,
         default: Date.now
@@ -132,25 +152,25 @@ const appointmentSchema = new Schema({
 });
 
 // Index for efficient queries
-appointmentSchema.index({ patient: 1, dateTime: -1 });
-appointmentSchema.index({ doctor: 1, dateTime: -1 });
-appointmentSchema.index({ status: 1 });
-appointmentSchema.index({ doctorConfirmationExpires: 1 }, { expireAfterSeconds: 0 }); // For TTL index
+sessionSchema.index({ client: 1, dateTime: -1 });
+sessionSchema.index({ provider: 1, dateTime: -1 });
+sessionSchema.index({ status: 1 });
+sessionSchema.index({ providerConfirmationExpires: 1 }, { expireAfterSeconds: 0 }); // TTL index
 
 // Middleware to update the updatedAt field
-appointmentSchema.pre('save', function (next) {
+sessionSchema.pre('save', function (next) {
     this.updatedAt = Date.now();
-
+    
     // Set endTime based on dateTime and duration if not explicitly set
     if (this.dateTime && this.duration && !this.isModified('endTime')) {
         this.endTime = new Date(this.dateTime.getTime() + this.duration * 60000);
     }
-
+    
     next();
 });
 
 // Instance methods
-appointmentSchema.methods.cancel = function (reason) {
+sessionSchema.methods.cancel = function (reason) {
     this.status = 'canceled';
     if (reason) {
         this.cancellationReason = reason;
@@ -158,85 +178,108 @@ appointmentSchema.methods.cancel = function (reason) {
     return this.save();
 };
 
-appointmentSchema.methods.complete = function (summary) {
+sessionSchema.methods.complete = function (summary) {
     this.status = 'completed';
     if (summary) {
-        this.consultationSummary = summary;
+        this.sessionSummary = summary;
     }
     return this.save();
 };
 
-appointmentSchema.methods.confirmDoctor = function () {
-    if (this.status === 'pending-doctor-confirmation') {
+sessionSchema.methods.confirmProvider = function () {
+    if (this.status === 'pending-provider-confirmation') {
         this.status = 'scheduled';
     }
     return this.save();
 };
 
 // Static methods
-appointmentSchema.statics.findUpcomingForPatient = function (patientId) {
+sessionSchema.statics.findUpcomingForClient = function (clientId) {
     return this.find({
-        patient: patientId,
+        client: clientId,
         dateTime: { $gte: new Date() },
         status: 'scheduled'
-    }).sort({ dateTime: 1 }).populate('doctor');
+    }).sort({ dateTime: 1 }).populate('provider');
 };
 
-appointmentSchema.statics.findUpcomingForDoctor = function (doctorId) {
+sessionSchema.statics.findUpcomingForProvider = function (providerId) {
     return this.find({
-        doctor: doctorId,
+        provider: providerId,
         dateTime: { $gte: new Date() },
         status: 'scheduled'
-    }).sort({ dateTime: 1 }).populate('patient');
+    }).sort({ dateTime: 1 }).populate('client');
 };
 
-// Add method to find pending-payment follow-ups for a patient
-appointmentSchema.statics.findPendingFollowUpsForPatient = function (patientId) {
+// Find pending-payment follow-ups for a client
+sessionSchema.statics.findPendingFollowUpsForClient = function (clientId) {
     return this.find({
-        patient: patientId,
+        client: clientId,
         status: 'pending-payment'
-    }).sort({ dateTime: 1 }).populate('doctor');
+    }).sort({ dateTime: 1 }).populate('provider');
 };
 
-// Find appointments pending doctor confirmation
-appointmentSchema.statics.findPendingDoctorConfirmation = function (doctorId) {
+// Find sessions pending provider confirmation
+sessionSchema.statics.findPendingProviderConfirmation = function (providerId) {
     return this.find({
-        doctor: doctorId,
-        status: 'pending-doctor-confirmation',
-        doctorConfirmationExpires: { $gt: new Date() }
-    }).sort({ doctorConfirmationExpires: 1 }).populate('patient');
+        provider: providerId,
+        status: 'pending-provider-confirmation',
+        providerConfirmationExpires: { $gt: new Date() }
+    }).sort({ providerConfirmationExpires: 1 }).populate('client');
 };
 
-// Find expired doctor confirmation appointments
-appointmentSchema.statics.findExpiredDoctorConfirmation = function () {
+// Find expired provider confirmation sessions
+sessionSchema.statics.findExpiredProviderConfirmation = function () {
     return this.find({
-        status: 'pending-doctor-confirmation',
-        doctorConfirmationExpires: { $lte: new Date() }
-    }).populate('patient').populate('doctor');
+        status: 'pending-provider-confirmation',
+        providerConfirmationExpires: { $lte: new Date() }
+    }).populate('client').populate('provider');
 };
 
-// Find appointments for calendar view
-appointmentSchema.statics.findForCalendar = function (userId, userRole, startDate, endDate) {
+// Find sessions for calendar view
+sessionSchema.statics.findForCalendar = function (userId, userRole, startDate, endDate) {
     const query = {};
-
-    if (userRole === 'patient') {
-        query.patient = userId;
-    } else if (userRole === 'doctor') {
-        query.doctor = userId;
+    
+    if (userRole === 'client') {
+        query.client = userId;
+    } else if (userRole === 'provider') {
+        query.provider = userId;
     }
-
+    
     if (startDate && endDate) {
         query.dateTime = {
             $gte: new Date(startDate),
             $lte: new Date(endDate)
         };
     }
-
+    
     return this.find(query)
         .sort({ dateTime: 1 })
-        .populate(userRole === 'patient' ? 'doctor' : 'patient');
+        .populate(userRole === 'client' ? 'provider' : 'client');
 };
 
-const Appointment = mongoose.model('Appointment', appointmentSchema);
+// Legacy methods for backward compatibility
+sessionSchema.statics.findUpcomingForPatient = function (patientId) {
+    return this.findUpcomingForClient(patientId);
+};
 
-module.exports = Appointment;
+sessionSchema.statics.findUpcomingForDoctor = function (doctorId) {
+    return this.findUpcomingForProvider(doctorId);
+};
+
+sessionSchema.statics.findPendingFollowUpsForPatient = function (patientId) {
+    return this.findPendingFollowUpsForClient(patientId);
+};
+
+sessionSchema.statics.findPendingDoctorConfirmation = function (doctorId) {
+    return this.findPendingProviderConfirmation(doctorId);
+};
+
+sessionSchema.statics.findExpiredDoctorConfirmation = function () {
+    return this.findExpiredProviderConfirmation();
+};
+
+// Create models with both names for transition period
+const Session = mongoose.model('Session', sessionSchema);
+const Appointment = mongoose.model('Appointment', sessionSchema); // Legacy alias
+
+module.exports = { Session, Appointment };

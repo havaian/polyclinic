@@ -3,19 +3,19 @@ const { validateUserInput } = require('../utils/validators');
 const { NotificationService } = require('../notification');
 const crypto = require('crypto');
 
-// Register a new user (patient or doctor)
+// Register a new user (client or provider)
 exports.registerUser = async (req, res) => {
     try {
         // First, we need to preprocess the data to prevent validation issues with role-specific fields
         const userData = { ...req.body };
         
-        // If the user is a patient, explicitly remove all doctor-specific fields before validation
-        if (userData.role === 'patient' || !userData.role) {
-            delete userData.specializations;
-            delete userData.specializations;
+        // If the user is a client, explicitly remove all provider-specific fields before validation
+        if (userData.role === 'client' || !userData.role) {
+            delete userData.expertise;
+            delete userData.expertise;
             delete userData.licenseNumber;
             delete userData.experience;
-            delete userData.consultationFee;
+            delete userData.sessionFee;
             delete userData.bio;
             delete userData.languages;
             delete userData.education;
@@ -47,25 +47,25 @@ exports.registerUser = async (req, res) => {
             firstName,
             lastName,
             phone,
-            role: role || 'patient',
+            role: role || 'client',
             verificationToken,
             isVerified: false
         });
 
         // Add role-specific fields
-        if (role === 'doctor') {
-            // Handle specializations (array)
-            if (userData.specializations) {
-                user.specializations = userData.specializations;
+        if (role === 'provider') {
+            // Handle expertise (array)
+            if (userData.expertise) {
+                user.expertise = userData.expertise;
             } else {
-                user.specializations = []; // Default empty array
+                user.expertise = []; // Default empty array
             }
             
             user.licenseNumber = userData.licenseNumber || '';
             user.experience = userData.experience || 0;
             user.bio = userData.bio ? decodeURIComponent(userData.bio) : '';
             user.languages = userData.languages || [];
-            user.consultationFee = userData.consultationFee || 0;
+            user.sessionFee = userData.sessionFee || 0;
             user.education = userData.education || [];
             user.certifications = userData.certifications || [];
 
@@ -80,7 +80,7 @@ exports.registerUser = async (req, res) => {
                 { dayOfWeek: 7, isAvailable: false, startTime: '00:00', endTime: '00:00' }
             ];
         }
-        else if (role === 'patient' || !role) {
+        else if (role === 'client' || !role) {
             const { dateOfBirth, gender, medicalHistory } = userData;
 
             user.dateOfBirth = dateOfBirth;
@@ -90,11 +90,11 @@ exports.registerUser = async (req, res) => {
                 user.medicalHistory = medicalHistory;
             }
             
-            // Explicitly ensure doctor-specific fields are unset for patients
-            user.specializations = undefined;
+            // Explicitly ensure provider-specific fields are unset for clients
+            user.expertise = undefined;
             user.licenseNumber = undefined;
             user.experience = undefined;
-            user.consultationFee = undefined;
+            user.sessionFee = undefined;
             user.bio = undefined;
             user.languages = undefined;
             user.education = undefined;
@@ -163,16 +163,19 @@ exports.loginUser = async (req, res) => {
 
         // Check if user exists and password is correct
         if (!user || !(await user.matchPassword(password))) {
+            console.log('Invalid credentials');
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         // Check if user is verified
         if (!user.isVerified) {
+            console.log('Please verify your email first');
             return res.status(401).json({ message: 'Please verify your email first' });
         }
 
         // Check if user is active
         if (!user.isActive) {
+            console.log('Your account has been deactivated. Please contact support.');
             return res.status(401).json({ message: 'Your account has been deactivated. Please contact support.' });
         }
 
@@ -196,13 +199,14 @@ exports.loginUser = async (req, res) => {
 // Get current user profile
 exports.getCurrentUser = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const user = await User.findById(req.user.id).select('-password -resetPasswordToken -resetPasswordExpire -verificationToken -jwtSecret');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        res.status(200).json({ user: user.getPublicProfile() });
+        // res.status(200).json({ user: user.getPublicProfile() });
+        res.status(200).json(user);
     } catch (error) {
         console.error('Error fetching current user:', error);
         res.status(500).json({ message: 'An error occurred while fetching user profile' });
@@ -215,8 +219,8 @@ exports.updateUserProfile = async (req, res) => {
         const allowedUpdates = [
             'firstName', 'lastName', 'phone', 'profilePicture',
             'address', 'bio', 'languages', 'availability',
-            'consultationFee', 'medicalHistory', 'emergencyContact',
-            'specializations', 'education', 'certifications', 'experience'
+            'sessionFee', 'medicalHistory', 'emergencyContact',
+            'expertise', 'education', 'certifications', 'experience'
         ];
 
         const updates = {};
@@ -359,11 +363,11 @@ exports.resetPassword = async (req, res) => {
     }
 };
 
-// Get all doctors (with optional filters)
-exports.getDoctors = async (req, res) => {
+// Get all providers (with optional filters)
+exports.getProviders = async (req, res) => {
     try {
         const {
-            specializations,
+            expertise,
             name,
             city,
             availableDay,
@@ -374,11 +378,11 @@ exports.getDoctors = async (req, res) => {
             limit = 10
         } = req.query;
 
-        const query = { role: 'doctor', isActive: true, isVerified: true };
+        const query = { role: 'provider', isActive: true, isVerified: true };
 
         // Apply filters
-        if (specializations) {
-            query.specializations = specializations;
+        if (expertise) {
+            query.expertise = expertise;
         }
 
         if (name) {
@@ -404,7 +408,7 @@ exports.getDoctors = async (req, res) => {
         }
 
         if (maxFee) {
-            query['consultationFee'] = { $lte: parseInt(maxFee) };
+            query['sessionFee'] = { $lte: parseInt(maxFee) };
         }
 
         if (language) {
@@ -414,7 +418,7 @@ exports.getDoctors = async (req, res) => {
         // Execute query with pagination
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const doctors = await User.find(query)
+        const providers = await User.find(query)
             .select('-password -verificationToken -resetPasswordToken -resetPasswordExpire')
             .skip(skip)
             .limit(parseInt(limit))
@@ -423,7 +427,7 @@ exports.getDoctors = async (req, res) => {
         const total = await User.countDocuments(query);
 
         res.status(200).json({
-            doctors,
+            providers,
             pagination: {
                 total,
                 page: parseInt(page),
@@ -432,31 +436,31 @@ exports.getDoctors = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error fetching doctors:', error);
-        res.status(500).json({ message: 'An error occurred while fetching doctors' });
+        console.error('Error fetching providers:', error);
+        res.status(500).json({ message: 'An error occurred while fetching providers' });
     }
 };
 
-// Get doctor by ID
-exports.getDoctorById = async (req, res) => {
+// Get provider by ID
+exports.getProviderById = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const doctor = await User.findOne({
+        const provider = await User.findOne({
             _id: id,
-            role: 'doctor',
+            role: 'provider',
             isActive: true,
             isVerified: true
         }).select('-password -verificationToken -resetPasswordToken -resetPasswordExpire');
 
-        if (!doctor) {
-            return res.status(404).json({ message: 'Doctor not found' });
+        if (!provider) {
+            return res.status(404).json({ message: 'Provider not found' });
         }
 
-        res.status(200).json({ doctor });
+        res.status(200).json({ provider });
     } catch (error) {
-        console.error('Error fetching doctor details:', error);
-        res.status(500).json({ message: 'An error occurred while fetching doctor details' });
+        console.error('Error fetching provider details:', error);
+        res.status(500).json({ message: 'An error occurred while fetching provider details' });
     }
 };
 
@@ -508,20 +512,20 @@ exports.deactivateAccount = async (req, res) => {
     }
 };
 
-// Get doctor's availability slots
-exports.getDoctorAvailability = async (req, res) => {
+// Get provider's availability slots
+exports.getProviderAvailability = async (req, res) => {
     try {
-        const { doctorId } = req.params;
+        const { providerId } = req.params;
         const { date } = req.query;
 
         if (!date) {
             return res.status(400).json({ message: 'Date parameter is required' });
         }
 
-        // Get doctor's working hours
-        const doctor = await User.findById(doctorId);
-        if (!doctor || doctor.role !== 'doctor') {
-            return res.status(404).json({ message: 'Doctor not found' });
+        // Get provider's working hours
+        const provider = await User.findById(providerId);
+        if (!provider || provider.role !== 'provider') {
+            return res.status(404).json({ message: 'Provider not found' });
         }
 
         // Parse date and get working hours for that day of week
@@ -529,17 +533,17 @@ exports.getDoctorAvailability = async (req, res) => {
         const dayOfWeek = requestedDate.getDay(); // 0 is Sunday, 1 is Monday, etc.
         const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to 0-based (Monday = 0, Sunday = 6)
 
-        const dayAvailability = doctor.availability.find(a => a.dayOfWeek === dayIndex);
+        const dayAvailability = provider.availability.find(a => a.dayOfWeek === dayIndex);
         if (!dayAvailability || !dayAvailability.isAvailable) {
             return res.status(200).json({
-                message: 'Doctor is not available on this day',
+                message: 'Provider is not available on this day',
                 availableSlots: []
             });
         }
 
         let availableSlots = [];
 
-        // Check if the doctor has time slots defined
+        // Check if the provider has time slots defined
         if (Array.isArray(dayAvailability.timeSlots) && dayAvailability.timeSlots.length > 0) {
             // For each time slot, generate available appointment slots
             for (const timeSlot of dayAvailability.timeSlots) {
@@ -547,7 +551,7 @@ exports.getDoctorAvailability = async (req, res) => {
                     requestedDate,
                     timeSlot.startTime,
                     timeSlot.endTime,
-                    doctorId
+                    providerId
                 );
                 availableSlots = [...availableSlots, ...slots];
             }
@@ -557,7 +561,7 @@ exports.getDoctorAvailability = async (req, res) => {
                 requestedDate,
                 dayAvailability.startTime,
                 dayAvailability.endTime,
-                doctorId
+                providerId
             );
         }
 
@@ -568,13 +572,13 @@ exports.getDoctorAvailability = async (req, res) => {
                 { start: dayAvailability.startTime, end: dayAvailability.endTime }
         });
     } catch (error) {
-        console.error('Error fetching doctor availability:', error);
-        res.status(500).json({ message: 'An error occurred while fetching doctor availability' });
+        console.error('Error fetching provider availability:', error);
+        res.status(500).json({ message: 'An error occurred while fetching provider availability' });
     }
 };
 
 // Helper function to generate time slots
-async function generateTimeSlots(date, startTimeStr, endTimeStr, doctorId) {
+async function generateTimeSlots(date, startTimeStr, endTimeStr, providerId) {
     // Parse start and end times
     const [startHour, startMinute] = startTimeStr.split(':').map(Number);
     const [endHour, endMinute] = endTimeStr.split(':').map(Number);
@@ -605,12 +609,12 @@ async function generateTimeSlots(date, startTimeStr, endTimeStr, doctorId) {
 
     // Remove slots that already have appointments
     const bookedAppointments = await Appointment.find({
-        doctor: doctorId,
+        provider: providerId,
         dateTime: {
             $gte: new Date(date.setHours(0, 0, 0, 0)),
             $lt: new Date(date.setHours(23, 59, 59, 999))
         },
-        status: { $in: ['scheduled', 'pending-doctor-confirmation'] }
+        status: { $in: ['scheduled', 'pending-provider-confirmation'] }
     });
 
     // Check for conflicts with each potential slot

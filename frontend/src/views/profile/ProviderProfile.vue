@@ -11,16 +11,16 @@
         <!-- Profile Header -->
         <div class="p-6 sm:p-8 border-b border-gray-200">
           <div class="flex flex-col sm:flex-row items-center sm:items-start">
-            <img :src="user.profilePicture || 'https://via.placeholder.com/150'" :alt="user.firstName"
+            <img :src="user.profilePicture || ''" :alt="user.firstName"
               class="h-32 w-32 rounded-full object-cover" />
             <div class="mt-4 sm:mt-0 sm:ml-6 text-center sm:text-left flex-1">
               <h1 class="text-2xl font-bold text-gray-900">
                 Dr. {{ user.firstName }} {{ user.lastName }}
               </h1>
 
-              <!-- Specializations as tags -->
+              <!-- Expertise as tags -->
               <div class="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
-                <span v-for="spec in user.specializations" :key="spec"
+                <span v-for="spec in user.expertise" :key="spec"
                   class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                   {{ spec }}
                 </span>
@@ -60,9 +60,9 @@
                   <dd class="mt-1 text-gray-900">{{ user.licenseNumber }}</dd>
                 </div>
                 <div>
-                  <dt class="text-sm font-medium text-gray-500">Consultation Fee</dt>
+                  <dt class="text-sm font-medium text-gray-500">Session Fee</dt>
                   <dd class="mt-1 text-gray-900">
-                    {{ formatConsultationFee }}
+                    {{ formatSessionFee }}
                   </dd>
                 </div>
               </dl>
@@ -160,11 +160,11 @@ const decodedBio = computed(() => {
   return textarea.value
 })
 
-// Computed property for formatted consultation fee
-const formatConsultationFee = computed(() => {
-  const fee = user.value?.consultationFee
+// Computed property for formatted session fee
+const formatSessionFee = computed(() => {
+  const fee = user.value?.sessionFee
 
-  if (!fee) return 'Consultation fee not specified'
+  if (!fee) return 'Session fee not specified'
 
   // If fee is an object with amount property
   if (typeof fee === 'object' && fee !== null && 'amount' in fee) {
@@ -175,7 +175,7 @@ const formatConsultationFee = computed(() => {
     return `${new Intl.NumberFormat('uz-UZ').format(fee)} UZS`
   }
 
-  return 'Consultation fee not specified'
+  return 'Session fee not specified'
 })
 
 // Computed property for formatted address
@@ -203,7 +203,7 @@ async function fetchUserProfile() {
   try {
     loading.value = true
     const response = await axios.get('/api/users/me')
-    user.value = response.data.user
+    user.value = response.data
   } catch (error) {
     console.error('Error fetching user profile:', error)
   } finally {
@@ -211,7 +211,7 @@ async function fetchUserProfile() {
   }
 }
 
-onMounted(() => {
-  fetchUserProfile()
+onMounted(async () => {
+  await fetchUserProfile()
 })
 </script>

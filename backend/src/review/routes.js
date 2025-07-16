@@ -2,12 +2,12 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const reviewSchema = new Schema({
-    patient: {
+    client: {
         type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    doctor: {
+    provider: {
         type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
@@ -54,8 +54,8 @@ const reviewSchema = new Schema({
         type: String,
         trim: true
     },
-    // Doctor response to review
-    doctorResponse: {
+    // Provider response to review
+    providerResponse: {
         text: {
             type: String,
             trim: true
@@ -77,19 +77,19 @@ const reviewSchema = new Schema({
     timestamps: true
 });
 
-// Ensure a patient can only leave one review per appointment
-reviewSchema.index({ patient: 1, appointment: 1 }, { unique: true });
+// Ensure a client can only leave one review per appointment
+reviewSchema.index({ client: 1, appointment: 1 }, { unique: true });
 
 // Add indexes for frequent queries
-reviewSchema.index({ doctor: 1 });
+reviewSchema.index({ provider: 1 });
 reviewSchema.index({ isApproved: 1 });
 reviewSchema.index({ rating: 1 });
 
-// Prevent patients from reviewing their own appointments multiple times
+// Prevent clients from reviewing their own appointments multiple times
 reviewSchema.pre('save', async function (next) {
     if (this.isNew) {
         const existingReview = await this.constructor.findOne({
-            patient: this.patient,
+            client: this.client,
             appointment: this.appointment
         });
 
@@ -104,18 +104,18 @@ reviewSchema.pre('save', async function (next) {
     next();
 });
 
-// Static method to get doctor's average rating
-reviewSchema.statics.getDoctorRating = async function (doctorId) {
+// Static method to get provider's average rating
+reviewSchema.statics.getProviderRating = async function (providerId) {
     const result = await this.aggregate([
         {
             $match: {
-                doctor: mongoose.Types.ObjectId(doctorId),
+                provider: mongoose.Types.ObjectId(providerId),
                 isApproved: true
             }
         },
         {
             $group: {
-                _id: '$doctor',
+                _id: '$provider',
                 averageRating: { $avg: '$rating' },
                 communicationRating: { $avg: '$communicationRating' },
                 professionalismRating: { $avg: '$professionalismRating' },
@@ -134,13 +134,13 @@ reviewSchema.statics.getDoctorRating = async function (doctorId) {
     };
 };
 
-// Static method to get recent reviews for a doctor
-reviewSchema.statics.getRecentReviews = async function (doctorId, limit = 5) {
+// Static method to get recent reviews for a provider
+reviewSchema.statics.getRecentReviews = async function (providerId, limit = 5) {
     return this.find({
-        doctor: doctorId,
+        provider: providerId,
         isApproved: true
     })
-        .populate('patient', 'firstName lastName profilePicture')
+        .populate('client', 'firstName lastName profilePicture')
         .sort({ createdAt: -1 })
         .limit(limit);
 };
