@@ -57,14 +57,6 @@ paymentSchema.virtual('appointment').get(function() {
     return this.session;
 });
 
-paymentSchema.virtual('patient').get(function() {
-    return this.client;
-});
-
-paymentSchema.virtual('doctor').get(function() {
-    return this.provider;
-});
-
 // Ensure virtual fields are included in JSON
 paymentSchema.set('toJSON', { virtuals: true });
 paymentSchema.set('toObject', { virtuals: true });

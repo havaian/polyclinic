@@ -72,7 +72,7 @@ const userSchema = new Schema({
         country: String
     },
     
-    // Provider-specific fields (formerly doctor fields)
+    // Provider-specific fields
     expertise: [{
         type: String,
         required: function () { return this.role === 'provider'; }
@@ -118,7 +118,7 @@ const userSchema = new Schema({
         required: function () { return this.role === 'provider'; }
     },
     
-    // Client-specific fields (formerly patient fields)
+    // Client-specific fields
     history: {
         notes: [String],
         conditions: [String],
@@ -284,12 +284,6 @@ userSchema.statics.findAvailableProviders = function (expertise) {
         isVerified: true,
         expertise: expertise || { $exists: true }
     }).select('-password');
-};
-
-// Static method to find providers by expertise (replaces findAvailableDoctors)
-userSchema.statics.findAvailableDoctors = function (specializations) {
-    // Legacy method - redirect to new method for backward compatibility
-    return this.findAvailableProviders(specializations);
 };
 
 const User = mongoose.model('User', userSchema);

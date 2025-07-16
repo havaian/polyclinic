@@ -257,29 +257,7 @@ sessionSchema.statics.findForCalendar = function (userId, userRole, startDate, e
         .populate(userRole === 'client' ? 'provider' : 'client');
 };
 
-// Legacy methods for backward compatibility
-sessionSchema.statics.findUpcomingForPatient = function (patientId) {
-    return this.findUpcomingForClient(patientId);
-};
-
-sessionSchema.statics.findUpcomingForDoctor = function (doctorId) {
-    return this.findUpcomingForProvider(doctorId);
-};
-
-sessionSchema.statics.findPendingFollowUpsForPatient = function (patientId) {
-    return this.findPendingFollowUpsForClient(patientId);
-};
-
-sessionSchema.statics.findPendingDoctorConfirmation = function (doctorId) {
-    return this.findPendingProviderConfirmation(doctorId);
-};
-
-sessionSchema.statics.findExpiredDoctorConfirmation = function () {
-    return this.findExpiredProviderConfirmation();
-};
-
 // Create models with both names for transition period
 const Session = mongoose.model('Session', sessionSchema);
-const Appointment = mongoose.model('Appointment', sessionSchema); // Legacy alias
 
-module.exports = { Session, Appointment };
+module.exports = Session;
