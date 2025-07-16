@@ -56,17 +56,6 @@ exports.sendDocumentUploadNotification = async (appointment, document, recipient
             `
         });
 
-        // Send Telegram notification if user has linked account
-        if (typeof recipient === 'object' && recipient.telegramId) {
-            const { telegramBot } = require('../bot/index');
-            if (telegramBot) {
-                await telegramBot.telegram.sendMessage(
-                    recipient.telegramId,
-                    `${uploaderName} has uploaded a new document (${document.name}) for your appointment on ${new Date(appointment.dateTime).toLocaleDateString()}.`
-                );
-            }
-        }
-
     } catch (error) {
         console.error('Error sending document upload notification:', error);
     }

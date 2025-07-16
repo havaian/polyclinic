@@ -167,15 +167,6 @@ const router = createRouter({
         requiresAuth: true
       }
     },
-    // AI Assistant chat route
-    {
-      path: '/chat/assistant',
-      name: 'ai-assistant',
-      component: () => import('@/views/chat/AiAssistant.vue'),
-      meta: {
-        requiresAuth: true
-      }
-    },
     // Session routes
     {
       path: '/session/:appointmentId',

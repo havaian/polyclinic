@@ -1,6 +1,5 @@
 const nodemailer = require('nodemailer');
 const amqp = require('amqplib');
-const { telegramBot } = require('../bot');
 const sessionNotification = require('./sessionNotification');
 const emailService = require('./emailService');
 
@@ -288,27 +287,6 @@ class NotificationService {
             this.sendTelegramMessage(telegramData.chatId, telegramData.text, telegramData.options).catch(err => {
                 console.error('Error in fallback Telegram send:', err);
             });
-        }
-    }
-
-    /**
-     * Send a Telegram message directly
-     * @param {String} chatId Telegram chat ID
-     * @param {String} text Message text
-     * @param {Object} options Additional options
-     */
-    async sendTelegramMessage(chatId, text, options = {}) {
-        try {
-            if (!telegramBot) {
-                console.error('Telegram bot not initialized');
-                return;
-            }
-
-            const result = await telegramBot.telegram.sendMessage(chatId, text, options);
-            return result;
-        } catch (error) {
-            console.error('Error sending Telegram message:', error);
-            throw error;
         }
     }
 

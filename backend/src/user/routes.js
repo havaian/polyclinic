@@ -74,13 +74,6 @@ router.get('/providers', userController.getProviders);
 router.get('/providers/:id', userController.getProviderById);
 
 /**
- * @route POST /api/users/link-telegram
- * @desc Link Telegram account
- * @access Private
- */
-router.post('/link-telegram', userController.linkTelegramAccount);
-
-/**
  * @route POST /api/users/deactivate
  * @desc Deactivate user account
  * @access Private

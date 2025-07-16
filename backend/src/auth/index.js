@@ -214,29 +214,6 @@ exports.ensureAppointmentAccess = async (req, res, next) => {
 };
 
 /**
- * Middleware to verify Telegram bot webhook
- */
-exports.verifyTelegramWebhook = (req, res, next) => {
-    try {
-        const { secret } = req.query;
-
-        // Check if secret matches configured value
-        if (!secret || secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
-            return res.status(403).json({
-                message: 'Unauthorized webhook request'
-            });
-        }
-
-        next();
-    } catch (error) {
-        console.error('Telegram webhook verification error:', error);
-        return res.status(500).json({
-            message: 'An error occurred during webhook verification.'
-        });
-    }
-};
-
-/**
  * Middleware to verify content for inappropriate patterns
  * Checks for contact information sharing attempts
  */

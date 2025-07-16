@@ -55,28 +55,6 @@ exports.sendSessionCompletedNotification = async (appointment) => {
             </div>
             `
         });
-
-        // Send Telegram notification if user has linked account
-        if (client.telegramId) {
-            const { telegramBot } = require('../bot/index');
-            if (telegramBot) {
-                await telegramBot.telegram.sendMessage(
-                    client.telegramId,
-                    `Your session with Dr. ${provider.firstName} ${provider.lastName} has ended.`
-                );
-            }
-        }
-
-        if (provider.telegramId) {
-            const { telegramBot } = require('../bot/index');
-            if (telegramBot) {
-                await telegramBot.telegram.sendMessage(
-                    provider.telegramId,
-                    `Your session with ${client.firstName} ${client.lastName} has ended. Please complete your session summary.`
-                );
-            }
-        }
-
     } catch (error) {
         console.error('Error sending session completed notification:', error);
     }

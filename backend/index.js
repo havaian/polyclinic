@@ -20,8 +20,6 @@ require('./db');
 // Import routes
 const userRoutes = require('./src/user/routes');
 const appointmentRoutes = require('./src/appointment/routes');
-const telegramRoutes = require('./src/bot/routes');
-// const assistantRoutes = require('./src/assistant/routes');
 const paymentRoutes = require('./src/payment/routes');
 const sessionRoutes = require('./src/session/routes');
 const adminRoutes = require('./src/admin/routes');
@@ -311,8 +309,6 @@ initializeSocketIO(io);
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/appointments', appointmentRoutes);
-app.use('/api/telegram', telegramRoutes);
-// app.use('/api/assistant', assistantRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/admin', adminRoutes);
