@@ -22,7 +22,7 @@ async function initializeEmailConsumer(rabbitChannel, emailTransporter) {
 
                 // Send the email
                 const mailOptions = {
-                    from: `"polyclinic.ytech.space" <${process.env.SMTP_FROM_EMAIL}>`,
+                    from: `"dev.e-polyclinic.uz" <${process.env.SMTP_FROM_EMAIL}>`,
                     to: emailData.to,
                     subject: emailData.subject,
                     text: emailData.text || '',

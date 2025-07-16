@@ -27,7 +27,7 @@ class EmailService {
     async sendEmail(options) {
         try {
             const mailOptions = {
-                from: `"polyclinic.ytech.space" <${process.env.SMTP_FROM_EMAIL}>`,
+                from: `"dev.e-polyclinic.uz" <${process.env.SMTP_FROM_EMAIL}>`,
                 to: options.to,
                 subject: options.subject,
                 text: options.text || '',
@@ -51,7 +51,7 @@ class EmailService {
             // Email to client
             await this.sendEmail({
                 to: client.email,
-                subject: 'Appointment Confirmation - polyclinic.ytech.space',
+                subject: 'Appointment Confirmation - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">Appointment Confirmed</h2>
@@ -67,7 +67,7 @@ class EmailService {
                     </div>
                     
                     <p>Please make sure to join the session 5 minutes before the scheduled time.</p>
-                    <p>You can view your appointment details and join the session by logging into your polyclinic.ytech.space account.</p>
+                    <p>You can view your appointment details and join the session by logging into your dev.e-polyclinic.uz account.</p>
                 </div>
                 `
             });
@@ -75,7 +75,7 @@ class EmailService {
             // Email to provider
             await this.sendEmail({
                 to: provider.email,
-                subject: 'New Appointment Scheduled - polyclinic.ytech.space',
+                subject: 'New Appointment Scheduled - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">New Appointment</h2>
@@ -88,7 +88,7 @@ class EmailService {
                         <p><strong>Type:</strong> ${type.charAt(0).toUpperCase() + type.slice(1)} Session</p>
                     </div>
                     
-                    <p>Please log in to your polyclinic.ytech.space account to view the complete appointment details.</p>
+                    <p>Please log in to your dev.e-polyclinic.uz account to view the complete appointment details.</p>
                 </div>
                 `
             });
@@ -108,7 +108,7 @@ class EmailService {
 
             await this.sendEmail({
                 to: client.email,
-                subject: 'Appointment Booking Failed - polyclinic.ytech.space',
+                subject: 'Appointment Booking Failed - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #e74c3c;">Appointment Booking Failed</h2>
@@ -143,7 +143,7 @@ class EmailService {
             // Email to client
             await this.sendEmail({
                 to: client.email,
-                subject: 'Appointment Reminder - polyclinic.ytech.space',
+                subject: 'Appointment Reminder - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">Appointment Reminder</h2>
@@ -164,7 +164,7 @@ class EmailService {
             // Email to provider
             await this.sendEmail({
                 to: provider.email,
-                subject: 'Appointment Reminder - polyclinic.ytech.space',
+                subject: 'Appointment Reminder - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">Appointment Reminder</h2>
@@ -198,7 +198,7 @@ class EmailService {
             // Email to client
             await this.sendEmail({
                 to: client.email,
-                subject: 'Appointment Cancelled - polyclinic.ytech.space',
+                subject: 'Appointment Cancelled - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #e74c3c;">Appointment Cancelled</h2>
@@ -219,7 +219,7 @@ class EmailService {
             // Email to provider
             await this.sendEmail({
                 to: provider.email,
-                subject: 'Appointment Cancelled - polyclinic.ytech.space',
+                subject: 'Appointment Cancelled - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #e74c3c;">Appointment Cancelled</h2>
@@ -253,7 +253,7 @@ class EmailService {
             // Email to client
             await this.sendEmail({
                 to: client.email,
-                subject: 'Appointment Confirmed by Provider - polyclinic.ytech.space',
+                subject: 'Appointment Confirmed by Provider - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">Appointment Confirmed by Provider</h2>
@@ -274,7 +274,7 @@ class EmailService {
             // Email confirmation to provider
             await this.sendEmail({
                 to: provider.email,
-                subject: 'Appointment Confirmation Successful - polyclinic.ytech.space',
+                subject: 'Appointment Confirmation Successful - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">Appointment Confirmed</h2>
@@ -307,7 +307,7 @@ class EmailService {
 
             await this.sendEmail({
                 to: client.email,
-                subject: 'Payment Successful - polyclinic.ytech.space',
+                subject: 'Payment Successful - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">Payment Successful</h2>
@@ -356,7 +356,7 @@ class EmailService {
 
             await this.sendEmail({
                 to: client.email,
-                subject: 'Payment Confirmation - polyclinic.ytech.space',
+                subject: 'Payment Confirmation - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">Payment Confirmation</h2>
@@ -400,7 +400,7 @@ class EmailService {
 
             await this.sendEmail({
                 to: client.email,
-                subject: 'Payment Refund - polyclinic.ytech.space',
+                subject: 'Payment Refund - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">Payment Refund</h2>
@@ -452,7 +452,7 @@ class EmailService {
 
             await this.sendEmail({
                 to: client.email,
-                subject: 'New Recommendations from Your Provider - polyclinic.ytech.space',
+                subject: 'New Recommendations from Your Provider - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">New Recommendations</h2>
@@ -462,7 +462,7 @@ class EmailService {
                         ${recommendationsHtml}
                     </div>
                     
-                    <p>You can view these recommendations at any time by logging into your polyclinic.ytech.space account.</p>
+                    <p>You can view these recommendations at any time by logging into your dev.e-polyclinic.uz account.</p>
                     <p><strong>Note:</strong> Always follow your provider's instructions when taking medications.</p>
                 </div>
                 `
@@ -485,7 +485,7 @@ class EmailService {
 
             await this.sendEmail({
                 to: client.email,
-                subject: 'Follow-up Appointment Recommended - polyclinic.ytech.space',
+                subject: 'Follow-up Appointment Recommended - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">Follow-up Appointment</h2>
@@ -499,14 +499,14 @@ class EmailService {
                         <p><strong>Reason:</strong> ${purpose}</p>
                     </div>
                     
-                    <p>This appointment requires payment confirmation. Please log in to your polyclinic.ytech.space account to confirm and complete payment for this follow-up appointment.</p>
+                    <p>This appointment requires payment confirmation. Please log in to your dev.e-polyclinic.uz account to confirm and complete payment for this follow-up appointment.</p>
                 </div>
                 `
             });
 
             await this.sendEmail({
                 to: provider.email,
-                subject: 'Follow-up Appointment Created - polyclinic.ytech.space',
+                subject: 'Follow-up Appointment Created - dev.e-polyclinic.uz',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4a90e2;">Follow-up Appointment Created</h2>
