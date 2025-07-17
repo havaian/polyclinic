@@ -200,6 +200,12 @@ const userSchema = new Schema({
     updatedAt: {
         type: Date,
         default: Date.now
+    },
+
+    preferredLanguage: {
+        type: String,
+        enum: ['en', 'ru', 'uz-latn', 'uz-cyrl'],
+        default: 'en'
     }
 }, {
     timestamps: true

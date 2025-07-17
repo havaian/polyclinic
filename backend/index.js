@@ -24,7 +24,8 @@ const paymentRoutes = require('./src/payment/routes');
 const sessionRoutes = require('./src/session/routes');
 const adminRoutes = require('./src/admin/routes');
 const specializationRoutes = require('./src/expertise/routes');
-const chatRoutes = require('./src/chat/routes'); // Added chat routes
+const chatRoutes = require('./src/chat/routes');
+const localizationRoutes = require('./src/localization/routes');
 
 // Initialize express app
 const app = express();
@@ -313,7 +314,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/expertise', specializationRoutes);
-app.use('/api/chat', chatRoutes); // Added chat routes
+app.use('/api/chat', chatRoutes);
+app.use('/api/localization', localizationRoutes);
 
 // Initialize cron jobs
 scheduleAppointmentReminders();
